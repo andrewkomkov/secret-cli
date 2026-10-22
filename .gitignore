@@ -1,0 +1,5 @@
+*.keychain-db
+.DS_Store
+.specify/scripts/
+.specify/workflows/
+build/
