@@ -694,6 +694,42 @@ for c in 'secret touchid off' 'secret touchid grace 0' \
   check "hook blocks: $c" bash -c "$(declare -f hook); HOOK='$HOOK'; hook '$c'; [ \$? -eq 2 ]"
 done
 check "hook passes: secret touchid status" bash -c "$(declare -f hook); HOOK='$HOOK'; hook 'secret touchid status'"
+
+# --- 023: текст heredoc для cat, tee, git не проверяется; helper хранилища можно осмотреть
+hook_blocks() { hook "$1"; [ $? -eq 2 ]; }
+for c in $'cat <<EOF | sh\nsecret get X\nEOF' \
+         $'bash <<EOF\nsecret get X\nEOF' \
+         $'zsh <<\'EOF\'\nFOO=1 secret get X\nEOF' \
+         $'cat > f <<EOF\nx\nEOF\nsecret get X' \
+         'ls $(build/secret-vault read r X)' \
+         'codesign -dv `build/secret-vault read r X`' \
+         'codesign -dv build/secret-vault && build/secret-vault read r X'; do
+  check "023: hook blocks: ${c//$'\n'/ ⏎ }" hook_blocks "$c"
+done
+for c in $'cat > spec.md <<\'EOF\'\nrun `secret touchid repair` after an upgrade\nEOF' \
+         $'git commit -F - <<EOF\ndocs: secret get is blocked\nEOF' \
+         $'tee f >/dev/null <<"EOF"\nSECRET_GH=./fake\nEOF' \
+         $'cd x && cat > f <<-EOF\n\tsecret copy X\n\tEOF' \
+         'codesign --verify --strict build/secret-vault' \
+         'ls -l build/secret-vault && shasum -a 256 build/secret-vault'; do
+  check "023: hook passes: ${c//$'\n'/ ⏎ }" hook "$c"
+done
+
+# --- 023: хук и правила агента для Claude Code (временные settings.json и CLAUDE.md)
+CS="$TMP/claude/settings.json"; CM="$TMP/claude/CLAUDE.md"
+mkdir -p "$TMP/claude"
+printf '{\n  "model": "x",\n  "hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [{"type": "command", "command": "/old/place/hooks/claude-pretooluse.sh"}, {"type": "command", "command": "/other/hook.sh"}]}]}\n}\n' > "$CS"
+printf '# My rules\n\nkeep this\n' > "$CM"
+"$ROOT/hooks/install-claude.sh" "$ROOT" "$CS" "$CM" 2>/dev/null
+"$ROOT/hooks/install-claude.sh" "$ROOT" "$CS" "$CM" 2>/dev/null
+hooks_of() { /usr/bin/python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(" ".join(h["command"] for e in d["hooks"]["PreToolUse"] for h in e["hooks"]))' "$1"; }
+check "023: claude: one hook of ours, new path" test "$(hooks_of "$CS")" = "/other/hook.sh $ROOT/hooks/claude-pretooluse.sh"
+check "023: claude: other settings kept" grep -q '"model": "x"' "$CS"
+check "023: claude: rules imported once" test "$(grep -c "^@$ROOT/docs/claude-md-secrets.md\$" "$CM")" = 1
+check "023: claude: own text kept" grep -qx 'keep this' "$CM"
+"$ROOT/hooks/install-claude.sh" /opt/elsewhere "$CS" "$CM" 2>/dev/null
+check "023: claude: a new root replaces the block" bash -c "[ \$(grep -c '^@' '$CM') = 1 ] && grep -qx '@/opt/elsewhere/docs/claude-md-secrets.md' '$CM' && grep -qx 'keep this' '$CM'"
+check "023: claude: a new root replaces the hook" test "$(hooks_of "$CS")" = "/other/hook.sh /opt/elsewhere/hooks/claude-pretooluse.sh"
 check "014: copy under Claude Code is refused" bash -c "out=\$(CLAUDECODE=1 '$SECRET' copy T_B 2>&1); [ \$? -ne 0 ] && [[ \$out == *'copy is for the user'* ]]"
 check "014: SECRET_VIA names the source in the log" bash -c "SECRET_VIA=shortcuts '$SECRET' get T_B >/dev/null && tail -1 '$SECRET_LOG' | cut -f3 | grep -qx shortcuts"
 check "014: SECRET_VIA cannot hide the agent" bash -c "CLAUDECODE=1 SECRET_VIA=secretbar '$SECRET' run T_B -- true && tail -1 '$SECRET_LOG' | cut -f3 | grep -qx agent"

@@ -8,6 +8,31 @@ my $in = do { local $/; <STDIN> };
 my $cmd = eval { decode_json($in)->{tool_input}{command} };
 exit 0 unless defined $cmd && length $cmd;
 
+# 023: тело heredoc, которое cat, tee или git получают как текст (файл, сообщение коммита), —
+# не команды. Если вывод идёт дальше по pipe, тело остаётся и проверяется.
+sub strip_text_heredocs {
+  my @lines = split /\n/, shift, -1;
+  my @out;
+  while (@lines) {
+    my $l = shift @lines;
+    push @out, $l;
+    next unless $l =~ /(?:^|[;&({])\s*(?:cat|tee|git)\b[^;&|]*<<-?\s*(['"]?)(\w+)\1[^|]*$/;
+    my $word = $2;
+    while (@lines) {
+      my $b = shift @lines;
+      if ($b =~ /^\t*\Q$word\E\s*$/) { push @out, $b; last }
+    }
+  }
+  return join "\n", @out;
+}
+$cmd = strip_text_heredocs($cmd);
+
+sub block {
+  print STDERR "Blocked by secret-cli: $_[0]. Use secret run --mask with the name of the secret. "
+    . "If the user wants to see the value, the user runs the command with ! in the prompt.\n";
+  exit 2;
+}
+
 my $seg = qr/[^;&|\n]*/;
 # начало команды: начало строки или после ; & | ( { $( `, с префиксами вида VAR=1 и sudo
 my $at = qr/(?:^|[;&|({\n`]|\$\()\s*(?:(?:sudo|command|exec|nohup|time|xargs)\s+)*(?:\w+=\S*\s+)*/m;
@@ -24,13 +49,16 @@ my @rules = (
   [ qr/$at\bsecret\s+touchid\s+(?:off|grace|repair)\b/, 'only the user changes the Touch ID settings' ],
   [ qr/touchid-ok\b/, 'only the user changes the Touch ID settings' ],
   [ qr/\bSECRET_(?:AUTH_HELPER|CONFIG|AUTH_STAMP|VAULT_HELPER|STORE_MODE|GH|CONFIRM|TEST_[A-Z_]+)=/, 'these variables are for tests only' ],
-  [ qr/(?<![\w.-])secret-vault(?:-test)?(?![\w-])(?!\.src-sha256\b)/, 'the store helper is called by secret only' ],
 );
+for my $r (@rules) { block($r->[1]) if $cmd =~ $r->[0]; }
 
-for my $r (@rules) {
-  next unless $cmd =~ $r->[0];
-  print STDERR "Blocked by secret-cli: $r->[1]. Use secret run --mask with the name of the secret. "
-    . "If the user wants to see the value, the user runs the command with ! in the prompt.\n";
-  exit 2;
+# Helper хранилища вызывает только secret. Часть команды, которая только смотрит на файл
+# (подпись, размер, хеш), проходит, если в ней нет $( и обратной кавычки (023).
+my $vault = qr/(?<![\w.-])secret-vault(?:-test)?(?![\w-])(?!\.src-sha256\b)/;
+my $look = qr/^\s*(?:\w+=\S*\s+)*(?:codesign|ls|stat|file|shasum|xattr|spctl)\b/;
+for my $part (split /[;&|\n]/, $cmd) {
+  next unless $part =~ $vault;
+  next if $part =~ $look && $part !~ /\$\(|`/;
+  block('the store helper is called by secret only');
 }
 exit 0;

@@ -1,7 +1,8 @@
 #!/bin/bash
 # Ставит secret в ~/.local/bin как symlink на эту репу: правка в репе сразу видна в PATH.
 #   ./install.sh                 команда
-#   ./install.sh --claude-hook   ещё хук PreToolUse в ~/.claude/settings.json
+#   ./install.sh --claude-hook   ещё хук PreToolUse в ~/.claude/settings.json и правила агента в
+#                                ~/.claude/CLAUDE.md (hooks/install-claude.sh)
 #   ./install.sh --app           ещё приложение SecretBar в ~/Applications и его запуск
 set -euo pipefail
 root="$(cd "$(dirname "$0")" && pwd)"
@@ -126,23 +127,5 @@ if [ $app -eq 1 ] || [ -d "$dest" ] || [ -d "$HOME/Applications/SecretBar.app" ]
 fi
 
 if [ $claude_hook -eq 1 ]; then
-  settings="${CLAUDE_SETTINGS:-$HOME/.claude/settings.json}"
-  [ -f "$settings" ] || echo '{}' > "$settings"
-  cp -p "$settings" "$settings.bak"
-  # python3 вместо perl: json в python сохраняет порядок ключей файла
-  /usr/bin/python3 - "$settings" "$root/hooks/claude-pretooluse.sh" <<'PY'
-import json, sys
-path, hook = sys.argv[1], sys.argv[2]
-with open(path) as f:
-    data = json.load(f)
-pre = data.setdefault('hooks', {}).setdefault('PreToolUse', [])
-if any(h.get('command') == hook for e in pre for h in e.get('hooks', [])):
-    print('claude hook: already in ' + path, file=sys.stderr)
-else:
-    pre.append({'matcher': 'Bash', 'hooks': [{'type': 'command', 'command': hook}]})
-    with open(path, 'w') as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-        f.write('\n')
-    print('claude hook: added to ' + path, file=sys.stderr)
-PY
+  "$root/hooks/install-claude.sh" "$root" "${CLAUDE_SETTINGS:-$HOME/.claude/settings.json}" "${CLAUDE_MD:-$HOME/.claude/CLAUDE.md}"
 fi

@@ -12,8 +12,8 @@ usage.
 The source of `secret` is the repository `github.com/andrewkomkov/secret-cli`. With Homebrew,
 `secret` is in `$(brew --prefix secret)/libexec`. From a clone, `~/.local/bin/secret` is a symlink
 to `bin/secret` in the clone. Make changes to the command in that repository, run
-`tests/run.sh` there and commit. If you change this section, copy it to
-`docs/claude-md-secrets.md` in that repository.
+`tests/run.sh` there and commit. `~/.claude/CLAUDE.md` imports this file
+(`docs/claude-md-secrets.md`) with an `@` line, so a change here goes to every session.
 
 - Each item has account `secret-cli` and a name (service) in UPPER_SNAKE_CASE.
 - Names of project secrets start with the project prefix, for example `SHOP_DB_PASSWORD`
