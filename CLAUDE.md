@@ -31,11 +31,22 @@ projects like `shop`, `billing`, `etl` and `wiki`. Do not write these items:
 - `app/`: SecretBar, the menu bar app. It needs Xcode.
 - `hooks/claude-pretooluse.sh`: the PreToolUse hook. `hooks/install-claude.sh` adds the hook and
   the rules import to `~/.claude`.
+- `site/`: the website, published to GitHub Pages by `.github/workflows/pages.yml`.
 - `install.sh`: the install from a clone. The Homebrew formula is in
   `github.com/andrewkomkov/homebrew-secret`.
 
 ## Release
 
-1. Push a tag `vX.Y.Z`.
-2. In the tap, change `url` and `sha256` in `Formula/secret.rb`.
-3. Run `brew install` and `brew test` for the formula.
+release-please makes the releases. Do not push a tag by hand.
+
+1. Commits `feat` and `fix` in `main` open or update the release pull request (version and
+   `CHANGELOG.md`).
+2. Merge the release pull request. The workflow `release.yml` makes the tag `vX.Y.Z`, the GitHub
+   Release, and updates `url` and `sha256` in the tap with the secret `HOMEBREW_TAP_TOKEN`.
+3. The CI of the tap runs `brew install`, `brew test` and `brew audit --strict`.
+
+## Language
+
+README, the website `site/` and the SecretBar interface are in English. Russian is a translation:
+`README.ru.md` and `ru` in `app/SecretBar/Localizable.xcstrings`. A new interface string gets its
+`ru` translation in the same change. Specs and the constitution stay in Russian.

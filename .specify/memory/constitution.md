@@ -1,5 +1,13 @@
 <!--
 Sync Impact Report
+- Version: 2.2.1 → 2.3.0 (MINOR: «Порядок работы», язык, CI, релизы)
+- Added: публичные тексты (README, сайт, интерфейс SecretBar) на английском, перевод `ru` рядом.
+  Спеки и конституция остаются на русском. CI в GitHub Actions запускает `tests/run.sh` на
+  macOS для каждого push и PR. Версию, тег и `CHANGELOG.md` делает release-please, формулу tap
+  обновляет workflow релиза.
+- Причина: владелец попросил выход на международный рынок, CI и release-please (2026-10-23).
+
+Предыдущий отчёт:
 - Version: 2.2.0 → 2.2.1 (PATCH: «Порядок работы», правила агента)
 - Modified: `~/.claude/CLAUDE.md` подключает `docs/claude-md-secrets.md` строкой `@`. Копии
   раздела больше нет, сверять нечего.
@@ -192,6 +200,12 @@ keychain, как раньше.
 - `tests/run.sh` проходит целиком перед каждым коммитом.
 - Коммиты — Conventional Commits. Remote — публичная репа `github.com/andrewkomkov/secret-cli`. В файлах и
   коммитах нет данных владельца: имён его секретов, проектов, хостов, личных путей.
+- Публичные тексты — README, сайт `site/`, интерфейс SecretBar — на английском. Русский — перевод:
+  `README.ru.md`, `ru` в `Localizable.xcstrings`. Спеки и конституция — на русском.
+- CI (`.github/workflows/ci.yml`) запускает `tests/run.sh` на macOS для каждого push и PR. Красный
+  CI не сливается.
+- Релиз делает release-please: PR релиза с версией и `CHANGELOG.md`, после слияния — тег `vX.Y.Z`
+  и GitHub Release. Workflow релиза обновляет формулу в tap. Тег руками не ставится.
 - Правила для агента лежат в `docs/claude-md-secrets.md`. `install.sh --claude-hook` подключает
   их строкой `@` в `~/.claude/CLAUDE.md`.
 
@@ -200,4 +214,4 @@ keychain, как раньше.
 Конституция выше устных договорённостей. Отступление записывается в `plan.md` фичи в разделе
 «Complexity Tracking» с причиной. Изменение конституции — отдельный коммит с новой версией.
 
-**Version**: 2.2.1 | **Ratified**: 2026-10-02 | **Last Amended**: 2026-10-22
+**Version**: 2.3.0 | **Ratified**: 2026-10-02 | **Last Amended**: 2026-10-23
