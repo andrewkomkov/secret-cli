@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-23
 
-**Status**: In progress
+**Status**: In progress: остался T013, ручной шаг владельца
 
 **Input**: Владелец: «давай на международный рынок выноси и рекламный лендос с motion design и CI на
 Action и release-please».
