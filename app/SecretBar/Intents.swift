@@ -67,7 +67,8 @@ struct CopySecretIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         // the access log names the source: Spotlight or Shortcuts, not the user at the keyboard
         let ok = await Store.shared.copy(secret.id, via: "shortcuts")
-        return .result(dialog: ok ? "\(secret.id) copied. The clipboard is cleared after 30 seconds." : "Could not copy \(secret.id).")
+        let dialog: IntentDialog = ok ? "\(secret.id) copied. The clipboard is cleared after 30 seconds." : "Could not copy \(secret.id)."
+        return .result(dialog: dialog)
     }
 }
 
