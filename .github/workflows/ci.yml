@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: tests on macOS
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Syntax
+        run: |
+          for f in bin/secret install.sh hooks/*.sh helper/store/build.sh app/build.sh tests/run.sh; do
+            bash -n "$f"
+          done
+          zsh -n completions/_secret
+          node --check site/main.js
+
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          swiftc --version
+
+      - name: tests/run.sh
+        run: tests/run.sh

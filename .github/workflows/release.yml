@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      created: ${{ steps.rp.outputs.release_created }}
+      tag: ${{ steps.rp.outputs.tag_name }}
+      version: ${{ steps.rp.outputs.version }}
+    steps:
+      - id: rp
+        uses: googleapis/release-please-action@v4
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  # A tag made with GITHUB_TOKEN starts no other workflow, so the formula is updated here.
+  formula:
+    needs: release-please
+    if: needs.release-please.outputs.created == 'true'
+    runs-on: ubuntu-latest
+    env:
+      TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+      TAG: ${{ needs.release-please.outputs.tag }}
+      VERSION: ${{ needs.release-please.outputs.version }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: No token
+        if: env.TAP_TOKEN == ''
+        run: echo "::warning::HOMEBREW_TAP_TOKEN is not set. Update url and sha256 in the tap by hand."
+
+      - name: Update the tap
+        if: env.TAP_TOKEN != ''
+        run: |
+          set -euo pipefail
+          url="https://github.com/$REPO/archive/refs/tags/$TAG.tar.gz"
+          sha="$(curl -fsSL --retry 5 "$url" | sha256sum | cut -d' ' -f1)"
+          git clone --depth 1 "https://x-access-token:$TAP_TOKEN@github.com/andrewkomkov/homebrew-secret.git" tap
+          cd tap
+          sed -i -E "s|^  url \".*\"$|  url \"$url\"|; s|^  sha256 \".*\"$|  sha256 \"$sha\"|" Formula/secret.rb
+          git diff --stat
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "secret $VERSION"
+          git push
