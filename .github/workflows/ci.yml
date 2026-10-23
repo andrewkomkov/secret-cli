@@ -35,5 +35,8 @@ jobs:
           xcodebuild -version
           swiftc --version
 
+      - name: SecretBar
+        run: app/build.sh build
+
       - name: tests/run.sh
         run: tests/run.sh
