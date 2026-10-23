@@ -23,9 +23,10 @@ jobs:
 
       - name: Syntax
         run: |
-          for f in bin/secret install.sh hooks/*.sh helper/store/build.sh app/build.sh tests/run.sh; do
+          for f in bin/secret install.sh hooks/install-claude.sh helper/store/build.sh app/build.sh tests/run.sh; do
             bash -n "$f"
           done
+          perl -c hooks/claude-pretooluse.sh
           zsh -n completions/_secret
           node --check site/main.js
 
