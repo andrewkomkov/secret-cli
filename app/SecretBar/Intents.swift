@@ -1,12 +1,12 @@
 // Spotlight and Shortcuts (014): each secret is an App Entity with its name and comment, and the
-// action "Скопировать секрет" copies its value through `secret copy`. The index holds names and
-// comments only; values never go there. Settings → «Показывать в Spotlight» turns it off.
+// action "Copy Secret" copies its value through `secret copy`. The index holds names and
+// comments only; values never go there. Settings → "Show in Spotlight" turns it off.
 import AppIntents
 import CoreSpotlight
 import SwiftUI
 
 struct SecretEntity: AppEntity, IndexedEntity {
-    static var typeDisplayRepresentation = TypeDisplayRepresentation(name: "Секрет")
+    static var typeDisplayRepresentation = TypeDisplayRepresentation(name: "Secret")
     static var defaultQuery = SecretQuery()
 
     let id: String
@@ -27,7 +27,7 @@ struct SecretEntity: AppEntity, IndexedEntity {
         let a = CSSearchableItemAttributeSet(contentType: .text)
         a.displayName = id
         a.contentDescription = comment
-        a.keywords = id.split(separator: "_").map(String.init) + [Parse.project(comment), "secret", "секрет", "пароль"]
+        a.keywords = id.split(separator: "_").map(String.init) + [Parse.project(comment), "secret", "password", "секрет", "пароль"]
         return a
     }
 }
@@ -53,11 +53,11 @@ struct SecretQuery: EntityStringQuery {
 }
 
 struct CopySecretIntent: AppIntent {
-    static var title: LocalizedStringResource = "Скопировать секрет"
-    static var description = IntentDescription("Копирует значение секрета в буфер обмена. Touch ID — как в терминале. Буфер очистится через 30 секунд.")
+    static var title: LocalizedStringResource = "Copy Secret"
+    static var description = IntentDescription("Copies the value of a secret to the clipboard. Touch ID works as in the terminal. The clipboard is cleared after 30 seconds.")
     static var openAppWhenRun = false
 
-    @Parameter(title: "Секрет")
+    @Parameter(title: "Secret")
     var secret: SecretEntity
 
     init() {}
@@ -67,15 +67,15 @@ struct CopySecretIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         // the access log names the source: Spotlight or Shortcuts, not the user at the keyboard
         let ok = await Store.shared.copy(secret.id, via: "shortcuts")
-        return .result(dialog: ok ? "\(secret.id) скопирован. Буфер очистится через 30 секунд." : "Не получилось скопировать \(secret.id).")
+        return .result(dialog: ok ? "\(secret.id) copied. The clipboard is cleared after 30 seconds." : "Could not copy \(secret.id).")
     }
 }
 
 // Opens SecretBar on the card of the secret: the action for a Spotlight result.
 struct OpenSecretIntent: OpenIntent {
-    static var title: LocalizedStringResource = "Открыть в SecretBar"
+    static var title: LocalizedStringResource = "Open in SecretBar"
 
-    @Parameter(title: "Секрет")
+    @Parameter(title: "Secret")
     var target: SecretEntity
 
     init() {}
@@ -90,10 +90,11 @@ struct OpenSecretIntent: OpenIntent {
 struct SecretShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(intent: CopySecretIntent(),
-                    phrases: ["Скопировать \(\.$secret) в \(.applicationName)",
-                              "Copy \(\.$secret) with \(.applicationName)",
+                    phrases: ["Copy \(\.$secret) with \(.applicationName)",
+                              "Copy a secret with \(.applicationName)",
+                              "Скопировать \(\.$secret) в \(.applicationName)",
                               "Скопировать секрет в \(.applicationName)"],
-                    shortTitle: "Скопировать секрет",
+                    shortTitle: "Copy Secret",
                     systemImageName: "key.fill")
     }
 }

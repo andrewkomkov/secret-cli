@@ -29,5 +29,5 @@ if [ -n "$cert" ]; then
   codesign -f -s "$cert" -o runtime --timestamp=none "$out/SecretBar.app" 2>/dev/null \
     || echo "app: Apple Development signature failed, ad-hoc kept" >&2
 fi
-cat "$here"/SecretBar/*.swift "$here/SecretBar.xcodeproj/project.pbxproj" "$here"/SecretBar/Assets.xcassets/AppIcon.appiconset/Contents.json | shasum -a 256 | cut -d' ' -f1 > "$out/SecretBar.src-sha256"
+cat "$here"/SecretBar/*.swift "$here/SecretBar.xcodeproj/project.pbxproj" "$here"/SecretBar/Assets.xcassets/AppIcon.appiconset/Contents.json "$here/SecretBar/Localizable.xcstrings" | shasum -a 256 | cut -d' ' -f1 > "$out/SecretBar.src-sha256"
 echo "$out/SecretBar.app"

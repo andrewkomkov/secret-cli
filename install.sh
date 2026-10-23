@@ -113,7 +113,7 @@ dest="/Applications/SecretBar.app"
 [ -w /Applications ] || dest="$HOME/Applications/SecretBar.app"
 if [ $app -eq 1 ] || [ -d "$dest" ] || [ -d "$HOME/Applications/SecretBar.app" ]; then
   [ "$dest" = "$HOME/Applications/SecretBar.app" ] || rm -rf "$HOME/Applications/SecretBar.app"
-  sum="$(cat "$root"/app/SecretBar/*.swift "$root/app/SecretBar.xcodeproj/project.pbxproj" "$root"/app/SecretBar/Assets.xcassets/AppIcon.appiconset/Contents.json | shasum -a 256 | cut -d' ' -f1)"
+  sum="$(cat "$root"/app/SecretBar/*.swift "$root/app/SecretBar.xcodeproj/project.pbxproj" "$root"/app/SecretBar/Assets.xcassets/AppIcon.appiconset/Contents.json "$root/app/SecretBar/Localizable.xcstrings" | shasum -a 256 | cut -d' ' -f1)"
   if [ -d "$root/build/SecretBar.app" ] && [ "$(cat "$root/build/SecretBar.src-sha256" 2>/dev/null)" = "$sum" ] \
       && codesign --verify --strict "$root/build/SecretBar.app" 2>/dev/null || "$root/app/build.sh" "$root/build" >/dev/null; then
     mkdir -p "$HOME/Applications"

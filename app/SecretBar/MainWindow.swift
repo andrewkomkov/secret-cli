@@ -45,31 +45,33 @@ struct MainWindow: View {
     // The card shows only a secret of the current list (015).
     private var selected: Secret? { listed.first { $0.name == nav.selection } }
 
-    private var emptyText: String {
+    private var emptyText: LocalizedStringKey {
         switch nav.sidebar {
-        case .expiring: return "Нет секретов со сроком в ближайшие 30 дней"
-        case .project: return "В проекте нет секретов"
-        default: return "Секретов пока нет. ⌘N — новый секрет"
+        case .expiring: return "No secrets expire in the next 30 days"
+        case .project: return "No secrets in this project"
+        default: return "No secrets yet. ⌘N adds one"
         }
+    }
+
+    private func projectRow(_ name: String, _ count: Int) -> some View {
+        Label { Text(verbatim: name).lineLimit(1) } icon: { ProjectBadge(project: name, size: 16) }
+            .badge(count).tag(SidebarItem.project(name))
     }
 
     var body: some View {
         NavigationSplitView {
             List(selection: $nav.sidebar) {
-                Section("Секреты") {
-                    Label("Все", systemImage: "key.fill").badge(store.secrets.count).tag(SidebarItem.all)
-                    Label("Истекают", systemImage: "clock.badge.exclamationmark")
+                Section("Secrets") {
+                    Label("All", systemImage: "key.fill").badge(store.secrets.count).tag(SidebarItem.all)
+                    Label("Expiring", systemImage: "clock.badge.exclamationmark")
                         .badge(store.expiredCount + store.soonCount).tag(SidebarItem.expiring)
                 }
-                Section("Проекты") {
-                    ForEach(store.projects, id: \.name) { p in
-                        Label { Text(p.name).lineLimit(1) } icon: { ProjectBadge(project: p.name, size: 16) }
-                            .badge(p.count).tag(SidebarItem.project(p.name))
-                    }
+                Section("Projects") {
+                    ForEach(store.projects, id: \.name) { p in projectRow(p.name, p.count) }
                 }
                 Section {
-                    Label("Активность", systemImage: "waveform.path.ecg").tag(SidebarItem.activity)
-                    Label("Настройки", systemImage: "gearshape").tag(SidebarItem.settings)
+                    Label("Activity", systemImage: "waveform.path.ecg").tag(SidebarItem.activity)
+                    Label("Settings", systemImage: "gearshape").tag(SidebarItem.settings)
                 }
             }
             .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 280)
@@ -86,8 +88,8 @@ struct MainWindow: View {
                         if let s = selected {
                             SecretCard(secret: s, sheet: $sheet, deleting: $deleting).id(s.name)
                         } else {
-                            ContentUnavailableView("Выберите секрет", systemImage: "key.horizontal",
-                                                   description: Text("↩ копирует значение, ⌘N — новый секрет"))
+                            ContentUnavailableView("Select a Secret", systemImage: "key.horizontal",
+                                                   description: Text("↩ copies the value, ⌘N adds a secret"))
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -99,13 +101,13 @@ struct MainWindow: View {
             ToolbarItemGroup(placement: .primaryAction) {
                 if store.busy != nil { ProgressView().controlSize(.small) }
                 if store.isOpen {
-                    Button { Task { await store.lock() } } label: { Label("Заблокировать", systemImage: "lock.fill") }
-                        .help("Заблокировать сейчас (⌘L)").keyboardShortcut("l")
+                    Button { Task { await store.lock() } } label: { Label("Lock", systemImage: "lock.fill") }
+                        .help("Lock now (⌘L)").keyboardShortcut("l")
                 }
-                Button { Task { await store.refreshAll() } } label: { Label("Обновить", systemImage: "arrow.clockwise") }
+                Button { Task { await store.refreshAll() } } label: { Label("Refresh", systemImage: "arrow.clockwise") }
                     .keyboardShortcut("r")
-                Button { sheet = .add } label: { Label("Новый секрет", systemImage: "plus") }
-                    .help("Новый секрет (⌘N)").keyboardShortcut("n")
+                Button { sheet = .add } label: { Label("New Secret", systemImage: "plus") }
+                    .help("New secret (⌘N)").keyboardShortcut("n")
             }
         }
         .navigationTitle("SecretBar")
@@ -118,13 +120,13 @@ struct MainWindow: View {
             case .rename(let x): RenameSheet(secret: x)
             }
         }
-        .alert("Удалить \(deleting?.name ?? "")?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {
-            Button("Удалить", role: .destructive) {
+        .alert("Delete \(deleting?.name ?? "")?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {
+            Button("Delete", role: .destructive) {
                 if let d = deleting { Task { if await store.delete(d) { nav.selection = nil } } }
             }
-            Button("Отмена", role: .cancel) {}
+            Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Восстановить можно только из резервной копии. Ссылки secret:\(deleting?.name ?? "") перестанут работать.")
+            Text("Only a backup can restore it. References secret:\(deleting?.name ?? "") will stop working.")
         }
         .overlay(alignment: .bottom) {
             if let t = store.toast { ToastView(toast: t).padding(.bottom, 18).transition(.move(edge: .bottom).combined(with: .opacity)) }
@@ -144,18 +146,18 @@ struct SecretList: View {
     @Binding var query: String
     @Binding var sheet: Sheet?
     @Binding var deleting: Secret?
-    var emptyText = ""
+    var emptyText: LocalizedStringKey = ""
     @FocusState private var searchFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 6) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField("Поиск", text: $query).textFieldStyle(.plain).focused($searchFocused)
-                    .accessibilityLabel("Поиск по имени и комментарию")
+                TextField("Search", text: $query).textFieldStyle(.plain).focused($searchFocused)
+                    .accessibilityLabel("Search by name and comment")
                 if !query.isEmpty {
                     Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary) }.buttonStyle(.plain)
-                        .accessibilityLabel("Очистить поиск")
+                        .accessibilityLabel("Clear search")
                 }
             }
             .padding(.horizontal, 10).padding(.vertical, 7)
@@ -167,10 +169,10 @@ struct SecretList: View {
                 // fills the column, so the search field stays at the top (015)
                 Group {
                     if query.isEmpty {
-                        ContentUnavailableView("Пусто", systemImage: "tray", description: Text(emptyText))
+                        ContentUnavailableView("Empty", systemImage: "tray", description: Text(emptyText))
                     } else {
-                        ContentUnavailableView("Ничего не найдено", systemImage: "magnifyingglass",
-                                               description: Text("Поиск идёт по имени и комментарию, в любой раскладке"))
+                        ContentUnavailableView("Nothing Found", systemImage: "magnifyingglass",
+                                               description: Text("Search looks at the name and the comment, in any keyboard layout"))
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -200,11 +202,11 @@ struct ListRow: View {
             ProjectBadge(project: secret.project, size: 26)
             VStack(alignment: .leading, spacing: 2) {
                 Text(secret.name).font(.system(size: 12, weight: .semibold, design: .monospaced)).lineLimit(1).truncationMode(.middle)
-                Text(secret.comment.isEmpty ? "без комментария" : secret.comment)
+                Text(secret.comment.isEmpty ? String(localized: "no comment") : secret.comment)
                     .font(.system(size: 11)).foregroundStyle(secret.comment.isEmpty ? .tertiary : .secondary).lineLimit(1)
             }
             Spacer(minLength: 2)
-            if hasRefs { Image(systemName: "link").font(.system(size: 9)).foregroundStyle(.tertiary).help("Есть ссылки в .env") }
+            if hasRefs { Image(systemName: "link").font(.system(size: 9)).foregroundStyle(.tertiary).help("Referenced in .env files") }
             ExpiryBadge(secret: secret)
         }
         .padding(.vertical, 3)
@@ -217,13 +219,13 @@ struct SecretMenu: View {
     @Binding var sheet: Sheet?
     @Binding var deleting: Secret?
     var body: some View {
-        Button { Task { await store.copy(secret.name) } } label: { Label("Копировать значение", systemImage: "doc.on.doc") }
-        Button { store.copyReference(secret.name) } label: { Label("Копировать ссылку secret:\(secret.name)", systemImage: "link") }
+        Button { Task { await store.copy(secret.name) } } label: { Label("Copy Value", systemImage: "doc.on.doc") }
+        Button { store.copyReference(secret.name) } label: { Label("Copy Reference secret:\(secret.name)", systemImage: "link") }
         Divider()
-        Button { sheet = .edit(secret) } label: { Label("Изменить…", systemImage: "pencil") }
-        Button { sheet = .rename(secret) } label: { Label("Переименовать…", systemImage: "character.cursor.ibeam") }
+        Button { sheet = .edit(secret) } label: { Label("Edit…", systemImage: "pencil") }
+        Button { sheet = .rename(secret) } label: { Label("Rename…", systemImage: "character.cursor.ibeam") }
         Divider()
-        Button(role: .destructive) { deleting = secret } label: { Label("Удалить…", systemImage: "trash") }
+        Button(role: .destructive) { deleting = secret } label: { Label("Delete…", systemImage: "trash") }
     }
 }
 
@@ -251,47 +253,47 @@ struct SecretCard: View {
 
                 HStack(spacing: 10) {
                     Button { Task { await store.copy(secret.name) } } label: {
-                        Label("Скопировать значение", systemImage: "doc.on.doc.fill").frame(minWidth: 170)
+                        Label("Copy Value", systemImage: "doc.on.doc.fill").frame(minWidth: 170)
                     }
                     .buttonStyle(.borderedProminent).controlSize(.large)
                     .keyboardShortcut("c", modifiers: [.command, .shift])
-                    Button { store.copyReference(secret.name) } label: { Label("Ссылка", systemImage: "link") }
+                    Button { store.copyReference(secret.name) } label: { Label("Reference", systemImage: "link") }
                         .controlSize(.large)
-                        .help("Скопировать secret:\(secret.name) для .env")
+                        .help("Copy secret:\(secret.name) for .env")
                     Menu {
-                        Button("Изменить…") { sheet = .edit(secret) }
-                        Button("Переименовать…") { sheet = .rename(secret) }
+                        Button("Edit…") { sheet = .edit(secret) }
+                        Button("Rename…") { sheet = .rename(secret) }
                         Divider()
-                        Button("Удалить…", role: .destructive) { deleting = secret }
+                        Button("Delete…", role: .destructive) { deleting = secret }
                     } label: { Image(systemName: "ellipsis") }
                         .menuIndicator(.hidden).fixedSize().controlSize(.large)
-                        .accessibilityLabel("Действия").help("Изменить, переименовать, удалить")
+                        .accessibilityLabel("Actions").help("Edit, rename, delete")
                 }
 
-                CardSection(title: "Комментарий", symbol: "text.alignleft") {
-                    Text(secret.comment.isEmpty ? "Нет комментария. Добавьте: что это и где используется — так секрет поймёт и агент." : secret.comment)
+                CardSection(title: "Comment", symbol: "text.alignleft") {
+                    Text(secret.comment.isEmpty ? String(localized: "No comment. Add what it is and where it is used, so that the agent understands it too.") : secret.comment)
                         .font(.system(size: 13))
                         .foregroundStyle(secret.comment.isEmpty ? .secondary : .primary)
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
-                CardSection(title: "Срок", symbol: "calendar") {
+                CardSection(title: "Expiry", symbol: "calendar") {
                     if let d = secret.daysLeft() {
                         HStack(spacing: 8) {
                             Text(secret.expiry).font(.system(size: 13, weight: .medium, design: .monospaced))
                             ExpiryBadge(secret: secret)
-                            Text(d < 0 ? "истёк \(-d) дн назад" : "через \(d) дн").font(.system(size: 12)).foregroundStyle(.secondary)
+                            Text(d < 0 ? "expired \(-d) d ago" : "in \(d) d").font(.system(size: 12)).foregroundStyle(.secondary)
                         }
                     } else {
-                        Text("Без срока").font(.system(size: 13)).foregroundStyle(.secondary)
+                        Text("No expiry").font(.system(size: 13)).foregroundStyle(.secondary)
                     }
                 }
 
-                CardSection(title: "Где используется", symbol: "link") {
+                CardSection(title: "Where It Is Used", symbol: "link") {
                     let refs = store.references[secret.name] ?? []
                     if refs.isEmpty {
-                        Text("Ссылок secret:\(secret.name) в .env проектов нет.").font(.system(size: 12.5)).foregroundStyle(.secondary)
+                        Text("No .env file of a project refers to secret:\(secret.name).").font(.system(size: 12.5)).foregroundStyle(.secondary)
                     } else {
                         VStack(alignment: .leading, spacing: 6) {
                             ForEach(refs, id: \.self) { r in
@@ -306,13 +308,13 @@ struct SecretCard: View {
                                     }
                                 }
                                 .buttonStyle(.plain)
-                                .help("Показать в Finder")
+                                .help("Show in Finder")
                             }
                         }
                     }
                 }
 
-                CardSection(title: "Как использовать", symbol: "terminal") {
+                CardSection(title: "How to Use", symbol: "terminal") {
                     VStack(alignment: .leading, spacing: 6) {
                         CodeLine("secret run --mask \(secret.name) -- cmd")
                         CodeLine("\(envKey)=secret:\(secret.name)")
@@ -335,10 +337,10 @@ struct SecretCard: View {
 }
 
 struct CardSection<Content: View>: View {
-    let title: String
+    let title: LocalizedStringKey
     let symbol: String
     @ViewBuilder let content: Content
-    init(title: String, symbol: String, @ViewBuilder content: () -> Content) { self.title = title; self.symbol = symbol; self.content = content() }
+    init(title: LocalizedStringKey, symbol: String, @ViewBuilder content: () -> Content) { self.title = title; self.symbol = symbol; self.content = content() }
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Label(title, systemImage: symbol).font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary).textCase(.uppercase)
@@ -366,7 +368,7 @@ struct CodeLine: View {
                 Task { try? await Task.sleep(for: .seconds(1.5)); copied = false }
             } label: { Image(systemName: copied ? "checkmark" : "doc.on.doc").font(.system(size: 11)) }
                 .buttonStyle(.borderless)
-                .accessibilityLabel(copied ? "Скопировано" : "Скопировать строку").help("Скопировать строку")
+                .accessibilityLabel(copied ? Text("Copied") : Text("Copy line")).help("Copy line")
         }
         .padding(.horizontal, 10).padding(.vertical, 6)
         .background(RoundedRectangle(cornerRadius: 7).fill(Color.primary.opacity(0.06)))
@@ -403,52 +405,52 @@ struct EditorSheet: View {
             HStack(spacing: 12) {
                 ProjectBadge(project: editing?.project ?? Parse.project(comment), size: 36)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(editing == nil ? "Новый секрет" : "Изменить").font(.system(size: 15, weight: .semibold))
+                    Text(editing == nil ? "New Secret" : "Edit").font(.system(size: 15, weight: .semibold))
                     if let e = editing { Text(e.name).font(.system(size: 12, design: .monospaced)).foregroundStyle(.secondary) }
                 }
             }
             .padding(20)
             Form {
                 if editing == nil {
-                    TextField("Имя", text: $name, prompt: Text("PROJECT_WHAT"))
+                    TextField("Name", text: $name, prompt: Text("PROJECT_WHAT"))
                         .font(.system(size: 12.5, design: .monospaced))
                     if !name.isEmpty && !nameOK {
-                        Text(nameTaken ? "Такое имя уже есть" : "Латиница, цифры, _ . -; первая — буква или _")
+                        Text(nameTaken ? "This name already exists" : "Latin letters, digits, _ . -; the first is a letter or _")
                             .font(.system(size: 11)).foregroundStyle(.red)
                     }
                 }
-                TextField("Комментарий", text: $comment, prompt: Text("проект: что это и где используется"), axis: .vertical)
+                TextField("Comment", text: $comment, prompt: Text("project: what it is and where it is used"), axis: .vertical)
                     .lineLimit(2...5)
-                Toggle("Срок действия", isOn: $hasExpiry)
-                if hasExpiry { DatePicker("Истекает", selection: $expiry, displayedComponents: .date) }
+                Toggle("Expiry date", isOn: $hasExpiry)
+                if hasExpiry { DatePicker("Expires", selection: $expiry, displayedComponents: .date) }
                 if editing == nil {
-                    Picker("Значение", selection: $generate) {
-                        Text("Ввести").tag(false)
-                        Text("Сгенерировать").tag(true)
+                    Picker("Value", selection: $generate) {
+                        Text("Type").tag(false)
+                        Text("Generate").tag(true)
                     }
                     .pickerStyle(.segmented)
                 }
                 if generate && editing == nil {
-                    LabeledContent("Длина") {
+                    LabeledContent("Length") {
                         HStack { Slider(value: $length, in: 8...128, step: 1); Text("\(Int(length))").monospacedDigit().frame(width: 32) }
                     }
-                    Picker("Символы", selection: $charset) {
-                        Text("Буквы и цифры").tag("alnum")
-                        Text("Со спецсимволами").tag("symbols")
+                    Picker("Characters", selection: $charset) {
+                        Text("Letters and digits").tag("alnum")
+                        Text("With symbols").tag("symbols")
                         Text("Hex").tag("hex")
                     }
-                    Text("Значение не увидит никто, даже вы: копируйте его из списка.").font(.system(size: 11)).foregroundStyle(.secondary)
+                    Text("Nobody sees the value, not even you: copy it from the list.").font(.system(size: 11)).foregroundStyle(.secondary)
                 } else {
-                    SecureField(editing == nil ? "Значение" : "Новое значение", text: $value,
-                                prompt: Text(editing == nil ? "скрытый ввод" : "пусто — оставить прежнее"))
+                    SecureField(editing == nil ? "Value" : "New value", text: $value,
+                                prompt: Text(editing == nil ? "hidden input" : "empty keeps the current value"))
                 }
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
             HStack {
                 Spacer()
-                Button("Отмена") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button(editing == nil ? "Сохранить" : "Применить") { Task { await save() } }
+                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
+                Button(editing == nil ? "Save" : "Apply") { Task { await save() } }
                     .keyboardShortcut(.defaultAction).disabled(!canSave).buttonStyle(.borderedProminent)
             }
             .padding(20)
@@ -492,17 +494,17 @@ struct RenameSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Переименовать").font(.system(size: 15, weight: .semibold))
+            Text("Rename").font(.system(size: 15, weight: .semibold))
             Text(secret.name).font(.system(size: 12, design: .monospaced)).foregroundStyle(.secondary)
-            TextField("Новое имя", text: $name).font(.system(size: 12.5, design: .monospaced)).textFieldStyle(.roundedBorder)
+            TextField("New name", text: $name).font(.system(size: 12.5, design: .monospaced)).textFieldStyle(.roundedBorder)
             let refs = store.references[secret.name] ?? []
-            Label(refs.isEmpty ? "Ссылок secret:\(secret.name) в .env не найдено." : "Ссылки в \(refs.count) файлах .env надо поправить самим.",
+            Label(refs.isEmpty ? "No .env file refers to secret:\(secret.name)." : "Fix the references in \(refs.count) .env files yourself.",
                   systemImage: refs.isEmpty ? "checkmark.circle" : "exclamationmark.triangle")
                 .font(.system(size: 11.5)).foregroundStyle(refs.isEmpty ? Color.secondary : Color.orange)
             HStack {
                 Spacer()
-                Button("Отмена") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Переименовать") {
+                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
+                Button("Rename") {
                     Task {
                         if await store.rename(secret, to: name) { Navigation.shared.selection = name; dismiss() }
                     }
@@ -526,13 +528,13 @@ struct ActivityView: View {
     var body: some View {
         Group {
             if store.activity.isEmpty {
-                ContentUnavailableView("Обращений нет", systemImage: "waveform.path.ecg")
+                ContentUnavailableView("No Activity", systemImage: "waveform.path.ecg")
             } else {
                 List(store.activity) { e in ActivityRow(entry: e) }
                     .listStyle(.inset)
             }
         }
-        .navigationTitle("Активность")
+        .navigationTitle("Activity")
         .onAppear { store.refreshActivity() }
         .onReceive(timer) { _ in store.refreshActivity() }
     }
@@ -583,32 +585,34 @@ struct ActivityRow: View {
     private var title: String {
         switch entry.kind {
         case .access(let op, let who, _, let detail):
-            let w = ["agent": "Агент", "shortcuts": "Spotlight или Shortcuts", "secretbar": "Вы · SecretBar"][who] ?? "Вы"
+            let w = ["agent": String(localized: "Agent"), "shortcuts": String(localized: "Spotlight or Shortcuts"), "secretbar": String(localized: "You · SecretBar")][who] ?? String(localized: "You")
             return "\(w) · \(Self.operations[op] ?? op)\(detail.isEmpty ? "" : " · \(detail)")"
         case .touchID(let r, _):
-            return r == "asked" ? "Touch ID спрошен" : r == "confirmed" ? "Touch ID подтверждён" : "Touch ID отклонён"
+            return r == "asked" ? String(localized: "Touch ID asked") : r == "confirmed" ? String(localized: "Touch ID confirmed") : String(localized: "Touch ID refused")
         }
     }
 
     private var subtitle: String {
         switch entry.kind {
         case .access(_, _, let names, _): return names
-        case .touchID(_, let d): return Self.russian(d)
+        case .touchID(_, let d): return Self.describe(d)
         }
     }
 
     // Operations of the access log of `secret`.
-    static let operations = ["run": "запуск", "get": "чтение", "copy": "копирование", "export": "резервная копия",
-                             "restore": "восстановление", "migrate": "переезд", "gh": "отправка в GitHub"]
+    static let operations = ["run": String(localized: "run"), "get": String(localized: "read"), "copy": String(localized: "copy"),
+                             "export": String(localized: "backup"), "restore": String(localized: "restore"),
+                             "migrate": String(localized: "migration"), "gh": String(localized: "push to GitHub")]
 
     // The agent log is in English: "use A B for sh", "confirmed after 0.7s", "refused after 3.1s".
-    static func russian(_ d: String) -> String {
+    static func describe(_ d: String) -> String {
         if d.hasPrefix("use "), let r = d.range(of: " for ", options: .backwards) {
-            return "для \(d[r.upperBound...]): \(d[d.index(d.startIndex, offsetBy: 4)..<r.lowerBound])"
+            let program = String(d[r.upperBound...]), names = String(d[d.index(d.startIndex, offsetBy: 4)..<r.lowerBound])
+            return String(localized: "for \(program): \(names)")
         }
-        if let r = d.range(of: " after ") {
-            let t = d[r.upperBound...].replacingOccurrences(of: "s", with: " с").replacingOccurrences(of: ".", with: ",")
-            return (d.hasPrefix("confirmed") ? "за " : "через ") + t
+        if let r = d.range(of: " after "), let s = Double(d[r.upperBound...].dropLast()) {
+            let t = s.formatted(.number.precision(.fractionLength(1)))
+            return d.hasPrefix("confirmed") ? String(localized: "in \(t) s") : String(localized: "after \(t) s")
         }
         return d
     }
@@ -626,43 +630,43 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section {
-                Picker("Без вопроса после Touch ID", selection: $minutes) {
-                    Text("Спрашивать каждый раз").tag(0)
-                    Text("5 минут простоя").tag(5)
-                    Text("15 минут простоя").tag(15)
-                    Text("30 минут простоя").tag(30)
-                    Text("60 минут простоя").tag(60)
+                Picker("No question after Touch ID", selection: $minutes) {
+                    Text("Ask every time").tag(0)
+                    Text("5 idle minutes").tag(5)
+                    Text("15 idle minutes").tag(15)
+                    Text("30 idle minutes").tag(30)
+                    Text("60 idle minutes").tag(60)
                 }
                 .onChange(of: minutes) { _, m in
                     guard m * 60 != (store.status.idle ?? -1) else { return }
                     Task { await store.setGrace(m * 60) }
                 }
-                LabeledContent("Сейчас", value: store.statusLine)
+                LabeledContent("Now", value: store.statusLine)
             } header: {
                 Label("Touch ID", systemImage: "touchid")
             } footer: {
-                Text("Простой — время без обращений к секретам. Предел — 8 часов. Блокировка экрана и сон заканчивают время сразу. Изменение подтверждается Touch ID.")
+                Text("Idle time is the time without requests for secrets. The limit is 8 hours. A screen lock or sleep ends it at once. A change needs Touch ID.")
             }
 
             Section {
-                Toggle("Показывать в Spotlight", isOn: $store.spotlight)
-                LabeledContent("Быстрый поиск", value: store.hotKeyOK ? "⌥⌘S" : "⌥⌘S занята другим приложением")
-                Toggle("Запускать при входе в систему", isOn: Binding(get: { store.launchAtLogin }, set: { store.toggleLaunchAtLogin($0) }))
+                Toggle("Show in Spotlight", isOn: $store.spotlight)
+                LabeledContent("Quick search", value: store.hotKeyOK ? "⌥⌘S" : String(localized: "⌥⌘S is used by another app"))
+                Toggle("Open at login", isOn: Binding(get: { store.launchAtLogin }, set: { store.toggleLaunchAtLogin($0) }))
             } header: {
-                Label("Поиск и запуск", systemImage: "magnifyingglass")
+                Label("Search and Launch", systemImage: "magnifyingglass")
             } footer: {
-                Text("В индекс Spotlight попадают только имена и комментарии, значения — никогда. Выключение стирает индекс.")
+                Text("The Spotlight index gets only names and comments, never values. Turning it off erases the index.")
             }
 
             Section {
                 if let url = exportURL {
-                    LabeledContent("Файл", value: url.path)
-                    SecureField("Пароль копии", text: $pw1, prompt: Text("12 символов или больше"))
-                    SecureField("Повторите пароль", text: $pw2)
+                    LabeledContent("File", value: url.path)
+                    SecureField("Backup password", text: $pw1, prompt: Text("12 characters or more"))
+                    SecureField("Repeat the password", text: $pw2)
                     HStack {
-                        Button("Отмена") { exportURL = nil; pw1 = ""; pw2 = "" }
+                        Button("Cancel") { exportURL = nil; pw1 = ""; pw2 = "" }
                         Spacer()
-                        Button("Сохранить копию") {
+                        Button("Save Backup") {
                             Task {
                                 if await store.export(to: url, password: pw1) { exportURL = nil }
                                 pw1 = ""; pw2 = ""
@@ -671,28 +675,28 @@ struct SettingsView: View {
                         .buttonStyle(.borderedProminent).disabled(pw1.count < 12 || pw1 != pw2)
                     }
                 } else {
-                    Button("Сохранить резервную копию…") { chooseFile() }
+                    Button("Save a Backup…") { chooseFile() }
                 }
             } header: {
-                Label("Резервная копия", systemImage: "externaldrive.badge.checkmark")
+                Label("Backup", systemImage: "externaldrive.badge.checkmark")
             } footer: {
-                Text("Все секреты в одном файле, AES-256 под отдельным паролем. Записи привязаны к этому Mac: на другой Mac их переносит только копия.")
+                Text("All secrets in one file, AES-256 under a separate password. The items are bound to this Mac: only a backup moves them to another Mac.")
             }
 
             Section {
-                LabeledContent("Хранилище", value: store.storeOn ? "Secure Enclave" : "файловый keychain")
-                LabeledContent("Секретов", value: "\(store.secrets.count)")
-                LabeledContent("Команда", value: Paths.secret)
+                LabeledContent("Store", value: store.storeOn ? "Secure Enclave" : String(localized: "file keychain"))
+                LabeledContent("Secrets", value: "\(store.secrets.count)")
+                LabeledContent("Command", value: Paths.secret)
                 HStack {
-                    Button("Журнал агента") { NSWorkspace.shared.open(URL(fileURLWithPath: Paths.agentLog)) }
-                    Button("Папка проекта") { NSWorkspace.shared.open(URL(fileURLWithPath: Paths.root)) }
+                    Button("Agent Log") { NSWorkspace.shared.open(URL(fileURLWithPath: Paths.agentLog)) }
+                    Button("Project Folder") { NSWorkspace.shared.open(URL(fileURLWithPath: Paths.root)) }
                 }
             } header: {
-                Label("О программе", systemImage: "info.circle")
+                Label("About", systemImage: "info.circle")
             }
         }
         .formStyle(.grouped)
-        .navigationTitle("Настройки")
+        .navigationTitle("Settings")
         .onAppear { if let i = store.status.idle { minutes = i / 60 } }
     }
 

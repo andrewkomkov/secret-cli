@@ -126,8 +126,8 @@ struct QuickSearchView: View {
                     .font(.system(size: 20, weight: .medium))
                     .foregroundStyle(LinearGradient(colors: [.indigo, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
                     .accessibilityHidden(true)
-                TextField("Секрет: имя или комментарий", text: $query)
-                    .accessibilityLabel("Поиск секрета. Ввод копирует выбранный")
+                TextField("Secret: name or comment", text: $query)
+                    .accessibilityLabel("Search secrets. Return copies the selected one")
                     .textFieldStyle(.plain)
                     .font(.system(size: 22, weight: .regular))
                     .focused($focused)
@@ -142,7 +142,7 @@ struct QuickSearchView: View {
             if results.isEmpty {
                 VStack(spacing: 8) {
                     Image(systemName: "magnifyingglass").font(.system(size: 28)).foregroundStyle(.tertiary)
-                    Text("Ничего не найдено").foregroundStyle(.secondary)
+                    Text("Nothing found").foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -162,16 +162,16 @@ struct QuickSearchView: View {
             }
             Divider().opacity(0.5)
             HStack(spacing: 14) {
-                Hint(keys: "↩", text: "копировать")
-                Hint(keys: "↑↓", text: "выбор")
-                Hint(keys: "esc", text: "закрыть")
+                Hint(keys: "↩", text: "copy")
+                Hint(keys: "↑↓", text: "select")
+                Hint(keys: "esc", text: "close")
                 Spacer()
                 Button {
                     let sel = results.indices.contains(index) ? results[index].name : nil
                     close()
                     Navigation.shared.select(sel)
                 } label: {
-                    Text("Открыть SecretBar").font(.system(size: 11))
+                    Text("Open SecretBar").font(.system(size: 11))
                 }
                 .buttonStyle(.borderless)
             }
@@ -230,7 +230,7 @@ struct QuickRow: View {
 
 struct Hint: View {
     let keys: String
-    let text: String
+    let text: LocalizedStringKey
     var body: some View {
         HStack(spacing: 4) {
             Text(keys)

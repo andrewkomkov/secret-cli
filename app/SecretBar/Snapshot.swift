@@ -16,7 +16,7 @@ enum Snapshot {
             ("activity", AnyView(ActivityView().environmentObject(store).frame(width: 640, height: 480)), CGSize(width: 640, height: 480)),
             ("settings", AnyView(SettingsView().environmentObject(store).frame(width: 640, height: 760)), CGSize(width: 640, height: 760)),
             ("editor", AnyView(EditorSheet(editing: nil).environmentObject(store)), CGSize(width: 480, height: 520)),
-            ("hud", AnyView(HUDView(text: "BILLING_API_TOKEN скопирован · очистится через 30 с", symbol: "doc.on.clipboard.fill", error: false).padding(20)), CGSize(width: 520, height: 110)),
+            ("hud", AnyView(HUDView(text: String(localized: "BILLING_API_TOKEN copied · cleared in 30 s"), symbol: "doc.on.clipboard.fill", error: false).padding(20)), CGSize(width: 520, height: 110)),
         ]
         // One theme per run (--theme dark|light), set before the first window: AppKit does not
         // redraw scroll views and forms when the appearance changes later.
@@ -30,10 +30,10 @@ enum Snapshot {
             render(AnyView(MainWindow().environmentObject(store)), size: CGSize(width: 1080, height: 680), dark: false, to: "\(dir)/main-settings-light.png")
         }
         // 015: an empty section (the search stays on top, no card) and a list of 300 secrets
-        Navigation.shared.sidebar = .project("нет такого проекта")
+        Navigation.shared.sidebar = .project("no-such-project")
         render(AnyView(MainWindow().environmentObject(store)), size: CGSize(width: 1080, height: 680), dark: dark, to: "\(dir)/main-empty-\(dark ? "dark" : "light").png")
         let many = Store(demo: true)
-        many.secrets = (0..<300).map { Secret(name: "PROJECT\($0 % 30)_SERVICE_TOKEN_\($0)", comment: "project\($0 % 30): токен сервиса номер \($0)", expiry: $0 % 7 == 0 ? "2026-10-20" : "") }
+        many.secrets = (0..<300).map { Secret(name: "PROJECT\($0 % 30)_SERVICE_TOKEN_\($0)", comment: "project\($0 % 30): service token number \($0)", expiry: $0 % 7 == 0 ? "2026-10-20" : "") }
         Navigation.shared.sidebar = .all
         Navigation.shared.selection = "PROJECT7_SERVICE_TOKEN_7"
         render(AnyView(MainWindow().environmentObject(many)), size: CGSize(width: 1080, height: 680), dark: dark, to: "\(dir)/main-many-\(dark ? "dark" : "light").png")

@@ -24,8 +24,8 @@ struct Secret: Identifiable, Hashable {
         return cal.dateComponents([.day], from: cal.startOfDay(for: today), to: d).day
     }
 
-    // The project: the text before ":" of the comment ("shop: пароль ..."), the convention of
-    // the agent rules. Without it: "Другое".
+    // The project: the text before ":" of the comment ("shop: password ..."), the convention of
+    // the agent rules. Without it: Parse.other.
     var project: String { Parse.project(comment) }
 }
 
@@ -198,10 +198,12 @@ enum Parse {
         return Array(all.sorted { ($0.time ?? .distantPast) > ($1.time ?? .distantPast) }.prefix(limit))
     }
 
+    static let other = String(localized: "Other")
+
     static func project(_ comment: String) -> String {
-        guard let r = comment.range(of: ":") else { return "Другое" }
+        guard let r = comment.range(of: ":") else { return other }
         let p = comment[..<r.lowerBound].trimmingCharacters(in: .whitespaces)
-        return p.isEmpty || p.count > 40 ? "Другое" : p
+        return p.isEmpty || p.count > 40 ? other : p
     }
 
     // References KEY=secret:NAME in the text of a dotenv file: (key, name).
@@ -312,7 +314,7 @@ final class Store: ObservableObject {
     var needsAttention: Bool { problem != nil || expiredCount > 0 }
     var projects: [(name: String, count: Int)] {
         Dictionary(grouping: secrets, by: \.project).map { ($0.key, $0.value.count) }
-            .sorted { $0.name == "Другое" ? false : $1.name == "Другое" ? true : $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+            .sorted { $0.name == Parse.other ? false : $1.name == Parse.other ? true : $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 
     var menuSymbol: String {
@@ -323,8 +325,8 @@ final class Store: ObservableObject {
     var statusLine: String {
         if let p = problem { return p }
         switch grace {
-        case .off: return "Закрыт · следующее чтение спросит Touch ID"
-        case .active(let left, _, _): return "Открыт · ещё \(Format.duration(left)) без вопроса"
+        case .off: return String(localized: "Closed · the next read asks for Touch ID")
+        case .active(let left, _, _): return String(localized: "Open · \(Format.duration(left)) more without a question")
         }
     }
 
@@ -363,10 +365,10 @@ final class Store: ObservableObject {
     func refreshStatus() async {
         guard !demo else { return }
         storeOn = Paths.modeText == "vault"
-        guard storeOn else { problem = "Хранилище с Touch ID выключено: secret migrate"; return }
+        guard storeOn else { problem = String(localized: "The Touch ID store is off: secret migrate"); return }
         let r = await runCommand(Paths.store, ["status"])
         guard r.ok, let s = Parse.status(r.out) else {
-            problem = "Helper не запускается. Продлите его в настройках."
+            problem = String(localized: "The helper does not start. Run ./install.sh again.")
             status.grace = .off
             return
         }
@@ -452,25 +454,25 @@ final class Store: ObservableObject {
             refreshActivity()
         } else {
             let m = r.message
-            show(m.contains("not confirmed") ? "Touch ID не подтверждён" : m.isEmpty ? "Ошибка" : m, symbol: "xmark.octagon.fill", error: true)
+            show(m.contains("not confirmed") ? String(localized: "Touch ID not confirmed") : m.isEmpty ? String(localized: "Error") : m, symbol: "xmark.octagon.fill", error: true)
         }
         return r.ok
     }
 
     func lock() async {
         guard !demo else { return }
-        busy = "Блокировка"
+        busy = "Lock"
         _ = await runCommand(Paths.store, ["lock"])
         busy = nil
         await refreshStatus()
-        show("Заблокировано", symbol: "lock.fill")
+        show(String(localized: "Locked"), symbol: "lock.fill")
     }
 
     // The value goes from the agent to the clipboard inside `secret copy`; the app never sees it.
     @discardableResult
     func copy(_ name: String, via: String = "secretbar") async -> Bool {
         guard !demo else { return true }
-        return await perform("Копирование \(name)", ["copy", name, "30"], done: "\(name) скопирован · очистится через 30 с",
+        return await perform("Copy \(name)", ["copy", name, "30"], done: String(localized: "\(name) copied · cleared in 30 s"),
                              symbol: "doc.on.clipboard.fill", refresh: false, via: via)
     }
 
@@ -478,58 +480,58 @@ final class Store: ObservableObject {
     func copyReference(_ name: String, saved: Bool = false) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString("secret:\(name)", forType: .string)
-        show(saved ? "\(name) сохранён · ссылка secret:\(name) в буфере" : "Ссылка secret:\(name) скопирована", symbol: "link")
+        show(saved ? String(localized: "\(name) saved · reference secret:\(name) copied") : String(localized: "Reference secret:\(name) copied"), symbol: "link")
     }
 
     func add(name: String, comment: String, expiry: String, value: String) async -> Bool {
         var args = ["set", "-c", comment]
         if !expiry.isEmpty { args += ["-x", expiry] }
         args.append(name)
-        return await perform("Сохранение \(name)", args, input: Data(value.utf8), done: "\(name) сохранён")
+        return await perform("Save \(name)", args, input: Data(value.utf8), done: String(localized: "\(name) saved"))
     }
 
     func generate(name: String, comment: String, expiry: String, length: Int, charset: String) async -> Bool {
-        guard await perform("Генерация \(name)", ["gen", "-l", String(length), "-s", charset, "-c", comment, name], done: "\(name) сгенерирован") else { return false }
-        if !expiry.isEmpty { return await perform("Срок \(name)", ["expire", name, expiry], done: "\(name) сгенерирован") }
+        guard await perform("Generate \(name)", ["gen", "-l", String(length), "-s", charset, "-c", comment, name], done: String(localized: "\(name) generated")) else { return false }
+        if !expiry.isEmpty { return await perform("Expiry \(name)", ["expire", name, expiry], done: String(localized: "\(name) generated")) }
         return true
     }
 
     func update(_ s: Secret, comment: String, expiry: String, newValue: String) async -> Bool {
         if comment != s.comment {
-            guard await perform("Комментарий", ["note", s.name, comment], done: "Сохранено") else { return false }
+            guard await perform("Comment", ["note", s.name, comment], done: String(localized: "Saved")) else { return false }
         }
         if expiry != s.expiry {
-            guard await perform("Срок", ["expire", s.name, expiry.isEmpty ? "none" : expiry], done: "Сохранено") else { return false }
+            guard await perform("Expiry", ["expire", s.name, expiry.isEmpty ? "none" : expiry], done: String(localized: "Saved")) else { return false }
         }
         if !newValue.isEmpty {
-            guard await perform("Значение", ["set", s.name], input: Data(newValue.utf8), done: "Значение \(s.name) заменено") else { return false }
+            guard await perform("Value", ["set", s.name], input: Data(newValue.utf8), done: String(localized: "Value of \(s.name) replaced")) else { return false }
         }
         return true
     }
 
     func rename(_ s: Secret, to new: String) async -> Bool {
-        await perform("Переименование", ["mv", s.name, new], done: "\(s.name) → \(new)")
+        await perform("Rename", ["mv", s.name, new], done: "\(s.name) → \(new)")
     }
 
     func delete(_ s: Secret) async -> Bool {
-        await perform("Удаление", ["rm", s.name], done: "\(s.name) удалён", symbol: "trash.fill")
+        await perform("Delete", ["rm", s.name], done: String(localized: "\(s.name) deleted"), symbol: "trash.fill")
     }
 
     func setGrace(_ seconds: Int) async {
-        await perform("Время без вопроса", ["touchid", "grace", String(seconds)],
-                      done: seconds == 0 ? "Touch ID на каждое чтение" : "Без вопроса \(seconds / 60) мин простоя", refresh: false)
+        await perform("Grace", ["touchid", "grace", String(seconds)],
+                      done: seconds == 0 ? String(localized: "Touch ID for each read") : String(localized: "No question for \(seconds / 60) idle min"), refresh: false)
     }
 
     func export(to url: URL, password: String) async -> Bool {
-        await perform("Резервная копия", ["export", "-f", "--pass-stdin", url.path], input: Data((password + "\n").utf8),
-                      done: "Копия сохранена: \(url.lastPathComponent)", symbol: "externaldrive.fill.badge.checkmark", refresh: false)
+        await perform("Backup", ["export", "-f", "--pass-stdin", url.path], input: Data((password + "\n").utf8),
+                      done: String(localized: "Backup saved: \(url.lastPathComponent)"), symbol: "externaldrive.fill.badge.checkmark", refresh: false)
     }
 
     func toggleLaunchAtLogin(_ on: Bool) {
         do {
             if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
         } catch {
-            show("Запуск при входе: \(error.localizedDescription)", symbol: "xmark.octagon.fill", error: true)
+            show(String(localized: "Open at login: \(error.localizedDescription)"), symbol: "xmark.octagon.fill", error: true)
         }
         launchAtLogin = SMAppService.mainApp.status == .enabled
     }
@@ -560,10 +562,10 @@ final class Store: ObservableObject {
         let expired = secrets.filter { ($0.daysLeft() ?? 1) < 0 }
         let soon = secrets.filter { if let d = $0.daysLeft() { return d >= 0 && d <= 7 } else { return false } }
         if !expired.isEmpty {
-            Notifier.once(key: "expired", title: "Истекли секреты: \(expired.count)",
+            Notifier.once(key: "expired", title: String(localized: "Expired secrets: \(expired.count)"),
                           body: expired.prefix(4).map(\.name).joined(separator: ", "))
         } else if !soon.isEmpty {
-            Notifier.once(key: "soon", title: "Секреты истекают за 7 дней: \(soon.count)",
+            Notifier.once(key: "soon", title: String(localized: "Secrets expire within 7 days: \(soon.count)"),
                           body: soon.prefix(4).map(\.name).joined(separator: ", "))
         }
         if problem != nil { Notifier.once(key: "problem", title: "SecretBar", body: problem ?? "") }
@@ -576,14 +578,14 @@ final class Store: ObservableObject {
         let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
         func day(_ n: Int) -> String { f.string(from: cal.date(byAdding: .day, value: n, to: Date())!) }
         secrets = [
-            Secret(name: "SHOP_DB_PASSWORD", comment: "shop: пароль учётки PostgreSQL (USER), работает на обе реплики", expiry: ""),
-            Secret(name: "SHOP_DB_USER", comment: "shop: логин учётки PostgreSQL", expiry: ""),
-            Secret(name: "SHOP_GRAFANA_PASSWORD", comment: "shop: пароль Grafana (admin)", expiry: day(5)),
+            Secret(name: "SHOP_DB_PASSWORD", comment: "shop: PostgreSQL password of USER, works on both replicas", expiry: ""),
+            Secret(name: "SHOP_DB_USER", comment: "shop: PostgreSQL login", expiry: ""),
+            Secret(name: "SHOP_GRAFANA_PASSWORD", comment: "shop: Grafana password (admin)", expiry: day(5)),
             Secret(name: "SHOP_JWT_SECRET", comment: "shop: prod API JWT signing key", expiry: ""),
             Secret(name: "BILLING_API_TOKEN", comment: "billing: prod API token for the billing service", expiry: day(120)),
-            Secret(name: "ETL_FERNET_KEY", comment: "etl: Fernet-ключ локального стенда", expiry: ""),
-            Secret(name: "GITHUB_TOKEN", comment: "GitHub, личный токен для gh", expiry: day(-3)),
-            Secret(name: "JENKINS_ADMIN_PASSWORD", comment: "jenkins: пароль админа локального Jenkins", expiry: ""),
+            Secret(name: "ETL_FERNET_KEY", comment: "etl: Fernet key of the local stack", expiry: ""),
+            Secret(name: "GITHUB_TOKEN", comment: "GitHub personal token for gh", expiry: day(-3)),
+            Secret(name: "JENKINS_ADMIN_PASSWORD", comment: "jenkins: admin password of the local Jenkins", expiry: ""),
             Secret(name: "WIKI_ADMIN_PASSWORD", comment: "wiki: prod wiki admin password", expiry: day(40)),
         ]
         status = Status(grace: .active(left: 1640, idle: 1800, limit: 26880), idle: 1800)
@@ -625,9 +627,9 @@ enum Notifier {
 
 enum Format {
     static func duration(_ seconds: Int) -> String {
-        if seconds >= 3600 { return "\(seconds / 3600) ч \(seconds % 3600 / 60) мин" }
-        if seconds >= 60 { return "\(seconds / 60) мин" }
-        return "\(seconds) с"
+        if seconds >= 3600 { return String(localized: "\(seconds / 3600) h \(seconds % 3600 / 60) min") }
+        if seconds >= 60 { return String(localized: "\(seconds / 60) min") }
+        return String(localized: "\(seconds) s")
     }
 }
 
@@ -662,7 +664,7 @@ enum SelfTest {
         check("activity: touch id", a[1].kind == .touchID(result: "confirmed", detail: "confirmed after 0.7s"))
         check("activity: limit", Parse.activity(access: access, agent: agent, limit: 2).count == 2)
         check("project: prefix", Parse.project("etl-pilot: пароль") == "etl-pilot")
-        check("project: none", Parse.project("GitHub token") == "Другое")
+        check("project: none", Parse.project("GitHub token") == Parse.other)
         let refs = Parse.references("A=secret:X_ONE\nB=plain\nexport C=secret:Y.two-3\n")
         check("references", refs.map(\.name) == ["X_ONE", "Y.two-3"])
         check("references: keys", refs.map(\.key) == ["A", "C"])

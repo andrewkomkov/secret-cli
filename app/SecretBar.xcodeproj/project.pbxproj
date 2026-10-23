@@ -13,6 +13,7 @@
 		5EB00000000000000000A005 /* Intents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EB00000000000000000B005; };
 		5EB00000000000000000A006 /* Snapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EB00000000000000000B006; };
 		5EB00000000000000000A900 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5EB00000000000000000B900; };
+		5EB00000000000000000A901 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 5EB00000000000000000B901; };
 		5EB00000000000000000B000 /* SecretBarApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretBarApp.swift; sourceTree = "<group>"; };
 		5EB00000000000000000B001 /* Model.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Model.swift; sourceTree = "<group>"; };
 		5EB00000000000000000B002 /* Views.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views.swift; sourceTree = "<group>"; };
@@ -21,19 +22,22 @@
 		5EB00000000000000000B005 /* Intents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Intents.swift; sourceTree = "<group>"; };
 		5EB00000000000000000B006 /* Snapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Snapshot.swift; sourceTree = "<group>"; };
 		5EB00000000000000000B900 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		5EB00000000000000000B901 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		5EB00000000000000000B999 /* SecretBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SecretBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5EB00000000000000000C001 = {isa = PBXGroup; children = (5EB00000000000000000C002, 5EB00000000000000000C003); sourceTree = "<group>"; };
-		5EB00000000000000000C002 /* SecretBar */ = {isa = PBXGroup; children = (5EB00000000000000000B000, 5EB00000000000000000B001, 5EB00000000000000000B002, 5EB00000000000000000B003, 5EB00000000000000000B004, 5EB00000000000000000B005, 5EB00000000000000000B006, 5EB00000000000000000B900); path = SecretBar; sourceTree = "<group>"; };
+		5EB00000000000000000C002 /* SecretBar */ = {isa = PBXGroup; children = (5EB00000000000000000B000, 5EB00000000000000000B001, 5EB00000000000000000B002, 5EB00000000000000000B003, 5EB00000000000000000B004, 5EB00000000000000000B005, 5EB00000000000000000B006, 5EB00000000000000000B900, 5EB00000000000000000B901); path = SecretBar; sourceTree = "<group>"; };
 		5EB00000000000000000C003 /* Products */ = {isa = PBXGroup; children = (5EB00000000000000000B999); name = Products; sourceTree = "<group>"; };
 		5EB00000000000000000D001 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (5EB00000000000000000A000, 5EB00000000000000000A001, 5EB00000000000000000A002, 5EB00000000000000000A003, 5EB00000000000000000A004, 5EB00000000000000000A005, 5EB00000000000000000A006); runOnlyForDeploymentPostprocessing = 0; };
-		5EB00000000000000000D002 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (5EB00000000000000000A900); runOnlyForDeploymentPostprocessing = 0; };
+		5EB00000000000000000D002 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (5EB00000000000000000A900, 5EB00000000000000000A901); runOnlyForDeploymentPostprocessing = 0; };
 		5EB00000000000000000E001 /* SecretBar */ = {isa = PBXNativeTarget; buildConfigurationList = 5EB00000000000000000F002; buildPhases = (5EB00000000000000000D001, 5EB00000000000000000D002); buildRules = (); dependencies = (); name = SecretBar; productName = SecretBar; productReference = 5EB00000000000000000B999; productType = "com.apple.product-type.application"; };
-		5EB00000000000000000E002 /* Project */ = {isa = PBXProject; attributes = {LastUpgradeCheck = 2700; }; buildConfigurationList = 5EB00000000000000000F001; compatibilityVersion = "Xcode 14.0"; developmentRegion = ru; hasScannedForEncodings = 0; knownRegions = (ru, en, Base); mainGroup = 5EB00000000000000000C001; productRefGroup = 5EB00000000000000000C003; projectDirPath = ""; projectRoot = ""; targets = (5EB00000000000000000E001); };
+		5EB00000000000000000E002 /* Project */ = {isa = PBXProject; attributes = {LastUpgradeCheck = 2700; }; buildConfigurationList = 5EB00000000000000000F001; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, ru, Base); mainGroup = 5EB00000000000000000C001; productRefGroup = 5EB00000000000000000C003; projectDirPath = ""; projectRoot = ""; targets = (5EB00000000000000000E001); };
 		5EB00000000000000000F101 /* Release (project) */ = {isa = XCBuildConfiguration; buildSettings = {
 			ALWAYS_SEARCH_USER_PATHS = NO;
 			MACOSX_DEPLOYMENT_TARGET = 15.0;
 			SDKROOT = macosx;
 			SWIFT_VERSION = 5.0;
+			SWIFT_EMIT_LOC_STRINGS = YES;
+			LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 		}; name = Release; };
 		5EB00000000000000000F102 /* Release (target) */ = {isa = XCBuildConfiguration; buildSettings = {
 			PRODUCT_BUNDLE_IDENTIFIER = local.secretcli.bar;

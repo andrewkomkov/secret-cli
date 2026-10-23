@@ -22,7 +22,7 @@ struct ProjectBadge: View {
     }
 
     private var letters: String {
-        if project == "Другое" { return "•" }
+        if project == Parse.other { return "•" }
         let parts = project.split(whereSeparator: { "- _".contains($0) })
         let l = parts.count > 1 ? String(parts[0].prefix(1)) + String(parts[1].prefix(1)) : String(project.prefix(2))
         return l.uppercased()
@@ -42,13 +42,13 @@ struct ExpiryBadge: View {
     var inverted = false
     var body: some View {
         if let d = secret.daysLeft() {
-            let (text, color): (String, Color) = d < 0 ? ("истёк", .red) : d <= 30 ? ("\(d) дн", .orange) : (secret.expiry, .secondary)
+            let (text, color): (String, Color) = d < 0 ? (String(localized: "expired"), .red) : d <= 30 ? (String(localized: "\(d) d"), .orange) : (secret.expiry, .secondary)
             Text(text)
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(inverted ? Color.white : color)
                 .padding(.horizontal, 7).padding(.vertical, 2.5)
                 .background(Capsule().fill(inverted ? Color.white.opacity(0.22) : color.opacity(0.13)))
-                .help("Срок: \(secret.expiry)")
+                .help("Expires: \(secret.expiry)")
         }
     }
 }
@@ -63,7 +63,7 @@ struct StatusPill: View {
             if case .active(let left, _, _) = store.grace {
                 Text(Format.duration(left)).font(.system(size: 11, weight: .semibold, design: .rounded)).monospacedDigit()
             } else {
-                Text("закрыт").font(.system(size: 11, weight: .semibold))
+                Text("closed").font(.system(size: 11, weight: .semibold))
             }
         }
         .foregroundStyle(open ? Color.green : Color.secondary)
@@ -118,14 +118,14 @@ struct MenuBarView: View {
                 if store.busy != nil { ProgressView().controlSize(.small) }
                 if store.isOpen {
                     Button { Task { await store.lock() } } label: { Image(systemName: "lock.fill") }
-                        .buttonStyle(.borderless).help("Заблокировать сейчас")
+                        .buttonStyle(.borderless).help("Lock now")
                 }
             }
             .padding(.horizontal, 14).padding(.top, 14).padding(.bottom, 10)
 
             HStack(spacing: 6) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField("Найти и скопировать", text: $query).textFieldStyle(.plain).focused($focused)
+                TextField("Find and copy", text: $query).textFieldStyle(.plain).focused($focused)
                     .onSubmit { if let s = results.first { Task { await store.copy(s.name) } } }
             }
             .padding(.horizontal, 10).padding(.vertical, 7)
@@ -134,7 +134,7 @@ struct MenuBarView: View {
 
             if store.expiredCount + store.soonCount > 0 {
                 Button { Navigation.shared.sidebar = .expiring; Navigation.shared.showMain() } label: {
-                    Label(store.expiredCount > 0 ? "Истекли: \(store.expiredCount)" : "Истекают за 30 дней: \(store.soonCount)",
+                    Label(store.expiredCount > 0 ? "Expired: \(store.expiredCount)" : "Expire within 30 days: \(store.soonCount)",
                           systemImage: "exclamationmark.triangle.fill")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(store.expiredCount > 0 ? .red : .orange)
@@ -155,19 +155,19 @@ struct MenuBarView: View {
             Divider()
             HStack(spacing: 6) {
                 Button { Navigation.shared.showMain() } label: {
-                    Label("Открыть SecretBar", systemImage: "macwindow")
+                    Label("Open SecretBar", systemImage: "macwindow")
                 }
                 .keyboardShortcut("o")
                 Spacer()
-                Hint(keys: "⌥⌘S", text: "быстрый поиск")
+                Hint(keys: "⌥⌘S", text: "quick search")
                 Menu {
-                    Button("Новый секрет…") { Navigation.shared.newSecret() }
-                    Button("Обновить") { Task { await store.refreshAll() } }
-                    Button("Настройки…") { Navigation.shared.sidebar = .settings; Navigation.shared.showMain() }
+                    Button("New Secret…") { Navigation.shared.newSecret() }
+                    Button("Refresh") { Task { await store.refreshAll() } }
+                    Button("Settings…") { Navigation.shared.sidebar = .settings; Navigation.shared.showMain() }
                     Divider()
-                    Button("Выйти из SecretBar") { NSApp.terminate(nil) }
+                    Button("Quit SecretBar") { NSApp.terminate(nil) }
                 } label: { Image(systemName: "ellipsis.circle") }
-                    .accessibilityLabel("Ещё")
+                    .accessibilityLabel("More")
                     .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
             }
             .buttonStyle(.borderless)
@@ -210,15 +210,15 @@ struct MenuRow: View {
         .contentShape(Rectangle())
         .onHover { hover = $0 }
         .onTapGesture { Task { await store.copy(secret.name) } }
-        .help("Клик — скопировать значение")
+        .help("Click to copy the value")
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
-        .accessibilityHint("Скопировать значение")
+        .accessibilityHint("Copy the value")
         .accessibilityAction { Task { await store.copy(secret.name) } }
         .contextMenu {
-            Button("Копировать значение") { Task { await store.copy(secret.name) } }
-            Button("Копировать ссылку secret:\(secret.name)") { store.copyReference(secret.name) }
-            Button("Открыть в SecretBar") { Navigation.shared.select(secret.name) }
+            Button("Copy Value") { Task { await store.copy(secret.name) } }
+            Button("Copy Reference secret:\(secret.name)") { store.copyReference(secret.name) }
+            Button("Open in SecretBar") { Navigation.shared.select(secret.name) }
         }
     }
 }

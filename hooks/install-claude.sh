@@ -11,7 +11,7 @@ mkdir -p "$(dirname "$settings")" "$(dirname "$claude_md")"
 
 [ -f "$settings" ] || echo '{}' > "$settings"
 cp -p "$settings" "$settings.bak"
-# python3 вместо perl: json в python сохраняет порядок ключей файла
+# python3, not perl: json in python keeps the key order of the file
 /usr/bin/python3 - "$settings" "$root/hooks/claude-pretooluse.sh" <<'PY'
 import json, sys
 path, hook = sys.argv[1], sys.argv[2]

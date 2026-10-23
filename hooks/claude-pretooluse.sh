@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# PreToolUse-хук Claude Code для Bash: код 2 останавливает команду, которая выводит значение секрета.
+# Claude Code PreToolUse hook for Bash: exit 2 stops a command that would print the value of a secret.
 use strict;
 use warnings;
 use JSON::PP;
@@ -8,8 +8,8 @@ my $in = do { local $/; <STDIN> };
 my $cmd = eval { decode_json($in)->{tool_input}{command} };
 exit 0 unless defined $cmd && length $cmd;
 
-# 023: тело heredoc, которое cat, tee или git получают как текст (файл, сообщение коммита), —
-# не команды. Если вывод идёт дальше по pipe, тело остаётся и проверяется.
+# 023: a heredoc body that cat, tee or git get as text (a file, a commit message) is not commands.
+# If the output goes on through a pipe, the body stays and is checked.
 sub strip_text_heredocs {
   my @lines = split /\n/, shift, -1;
   my @out;
@@ -34,7 +34,7 @@ sub block {
 }
 
 my $seg = qr/[^;&|\n]*/;
-# начало команды: начало строки или после ; & | ( { $( `, с префиксами вида VAR=1 и sudo
+# start of a command: start of a line or after ; & | ( { $( `, with prefixes such as VAR=1 and sudo
 my $at = qr/(?:^|[;&|({\n`]|\$\()\s*(?:(?:sudo|command|exec|nohup|time|xargs)\s+)*(?:\w+=\S*\s+)*/m;
 my @rules = (
   [ qr/$at\bsecret\s+get\b/, 'secret get prints the value' ],
@@ -52,8 +52,8 @@ my @rules = (
 );
 for my $r (@rules) { block($r->[1]) if $cmd =~ $r->[0]; }
 
-# Helper хранилища вызывает только secret. Часть команды, которая только смотрит на файл
-# (подпись, размер, хеш), проходит, если в ней нет $( и обратной кавычки (023).
+# Only secret calls the store helper. A part of a command that only looks at the file
+# (signature, size, hash) passes if it has no $( and no backquote (023).
 my $vault = qr/(?<![\w.-])secret-vault(?:-test)?(?![\w-])(?!\.src-sha256\b)/;
 my $look = qr/^\s*(?:\w+=\S*\s+)*(?:codesign|ls|stat|file|shasum|xattr|spctl)\b/;
 for my $part (split /[;&|\n]/, $cmd) {
