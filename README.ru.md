@@ -4,10 +4,12 @@
 
 **Секреты в keychain macOS, которыми агент пользуется, не видя значений.**
 
+[English](README.md) · **Русский**
+
 ![macOS](https://img.shields.io/badge/macOS-only-000000?logo=apple&logoColor=white)
 ![bash 3.2](https://img.shields.io/badge/bash-3.2-4EAA25?logo=gnubash&logoColor=white)
 ![deps](https://img.shields.io/badge/dependencies-none-blue)
-![tests](https://img.shields.io/badge/tests-309%20passing-brightgreen)
+[![CI](https://github.com/andrewkomkov/secret-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/andrewkomkov/secret-cli/actions/workflows/ci.yml)
 ![Touch ID](https://img.shields.io/badge/Touch%20ID-optional-lightgrey)
 
 [Быстрый старт](#быстрый-старт) ·
@@ -391,7 +393,7 @@ provisioning profile из Xcode на 7 дней. В версии 018 его за
 ## Разработка
 
 ```sh
-tests/run.sh    # 309 проверок на временном keychain и тестовой сборке хранилища
+tests/run.sh    # 340+ проверок на временном keychain и тестовой сборке хранилища
 ```
 
 Тесты создают свои keychain и удаляют их в конце. Рабочий keychain, буфер обмена и список
