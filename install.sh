@@ -119,7 +119,8 @@ if [ $app -eq 1 ] || [ -d "$dest" ] || [ -d "$HOME/Applications/SecretBar.app" ]
     mkdir -p "$HOME/Applications"
     pkill -x SecretBar 2>/dev/null || true
     rm -rf "$dest" && ditto "$root/build/SecretBar.app" "$dest"
-    open "$dest"
+    # Right after pkill, LaunchServices can answer -600; set -e must not stop the hook step below.
+    open "$dest" 2>/dev/null || { sleep 2; open "$dest"; } || echo "app: open $dest by hand" >&2
     echo "app: $dest" >&2
   else
     echo "app: build failed (Xcode needed)" >&2
