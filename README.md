@@ -234,13 +234,13 @@ VALUE as an argument shows in `ps` and in the shell history. Use stdin or `ask`.
 ```
 
 - **Quick search ⌥⌘S** from any app, in the style of Spotlight. Type a name or a word from the
-  comment. ↩ copies the value, ↑↓ selects, esc closes. Search understands text typed in the wrong
+  comment. ↩ copies the reference `secret:NAME`, ⇧↩ copies the value, ⌘N adds a secret, esc closes. Search understands text typed in the wrong
   keyboard layout.
 - **Spotlight.** Secrets show up in Spotlight, and the action "Copy Secret" is in Shortcuts. The
   index gets only names and comments, never values. Settings → "Show in Spotlight" turns it off
   and erases the index.
 - **Menu bar icon**: the lock shows the grace state: open with the time left, closed, or needs
-  attention. A click opens a panel with the status, search and one-click copy.
+  attention. A click opens a panel with the status and search. ↩ or a click copies the reference, ⇧↩ or ⇧-click the value. The + button adds a secret. If search finds nothing, ↩ creates a secret with that name.
 - **Main window**: projects on the left (from the comment "project: …"), the list in the middle,
   the card of the secret on the right. The card shows the comment, the expiry date, the `.env`
   files that refer to `secret:NAME`, and ready lines for `secret run` and `.env`. Add, generate,
