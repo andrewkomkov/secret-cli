@@ -320,12 +320,12 @@
         }
       }
     },
-    "Click to copy the value" : {
+    "Click copies the reference, ⇧-click the value" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Клик — скопировать значение"
+            "value" : "Клик — ссылка, ⇧-клик — значение"
           }
         }
       }
@@ -430,12 +430,12 @@
         }
       }
     },
-    "Copy the value" : {
+    "Copy the reference" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Скопировать значение"
+            "value" : "Скопировать ссылку"
           }
         }
       }
@@ -446,6 +446,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не получилось скопировать %@."
+          }
+        }
+      }
+    },
+    "Create %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Создать %@"
           }
         }
       }
@@ -620,12 +630,12 @@
         }
       }
     },
-    "Find and copy" : {
+    "Find: ↩ reference, ⇧↩ value" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Найти и скопировать"
+            "value" : "Найти: ↩ ссылка, ⇧↩ значение"
           }
         }
       }
@@ -1216,12 +1226,12 @@
         }
       }
     },
-    "Search secrets. Return copies the selected one" : {
+    "Search secrets. Return copies the reference, Shift-Return the value" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Поиск секрета. Ввод копирует выбранный"
+            "value" : "Поиск секрета. Ввод копирует ссылку, Shift-Ввод — значение"
           }
         }
       }
@@ -1642,6 +1652,16 @@
         }
       }
     },
+    "new" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "новый"
+          }
+        }
+      }
+    },
     "no comment" : {
       "localizations" : {
         "ru" : {
@@ -1692,6 +1712,16 @@
         }
       }
     },
+    "reference" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ссылка"
+          }
+        }
+      }
+    },
     "restore" : {
       "localizations" : {
         "ru" : {
@@ -1712,22 +1742,22 @@
         }
       }
     },
-    "select" : {
+    "value" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "выбор"
+            "value" : "значение"
           }
         }
       }
     },
-    "↩ copies the value, ⌘N adds a secret" : {
+    "↩ copies the reference, ⇧↩ the value, ⌘N adds a secret" : {
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "↩ копирует значение, ⌘N — новый секрет"
+            "value" : "↩ копирует ссылку, ⇧↩ — значение, ⌘N — новый секрет"
           }
         }
       }

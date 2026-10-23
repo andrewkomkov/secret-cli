@@ -200,6 +200,13 @@ enum Parse {
 
     static let other = String(localized: "Other")
 
+    // A search query as the name of a new secret: "shop db pass" → SHOP_DB_PASS (025).
+    static func suggestedName(_ query: String) -> String? {
+        let n = query.trimmingCharacters(in: .whitespaces).uppercased()
+            .replacingOccurrences(of: " ", with: "_").replacingOccurrences(of: "-", with: "_")
+        return validName(n) ? n : nil
+    }
+
     static func project(_ comment: String) -> String {
         guard let r = comment.range(of: ":") else { return other }
         let p = comment[..<r.lowerBound].trimmingCharacters(in: .whitespaces)
@@ -476,6 +483,12 @@ final class Store: ObservableObject {
                              symbol: "doc.on.clipboard.fill", refresh: false, via: via)
     }
 
+    // ↩ copies the reference, ⇧↩ the value (025).
+    func pick(_ name: String, value: Bool) async {
+        if value { await copy(name) } else { copyReference(name) }
+    }
+    static var shiftDown: Bool { NSEvent.modifierFlags.contains(.shift) }
+
     // saved: right after the add sheet (019), one toast for both facts.
     func copyReference(_ name: String, saved: Bool = false) {
         NSPasteboard.general.clearContents()
@@ -681,6 +694,8 @@ enum SelfTest {
         check("name: valid", Parse.validName("SHOP_DB_PASSWORD"))
         check("name: reserved", !Parse.validName("__secret-cli.policy"))
         check("name: space", !Parse.validName("A B"))
+        check("suggested name", Parse.suggestedName(" shop db-pass ") == "SHOP_DB_PASS")
+        check("suggested name: invalid", Parse.suggestedName("1abc") == nil && Parse.suggestedName("") == nil && Parse.suggestedName("пароль") == nil)
         check("days: past is negative", (Secret(name: "X", comment: "", expiry: "2000-01-01").daysLeft() ?? 0) < 0)
         check("days: none", Secret(name: "X", comment: "", expiry: "").daysLeft() == nil)
         let store = Store(demo: true)

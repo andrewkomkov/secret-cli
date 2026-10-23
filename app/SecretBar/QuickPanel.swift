@@ -27,7 +27,9 @@ final class Navigation: ObservableObject {
 
     // The main window takes the request on appear or on change and opens the add sheet (019).
     @Published var addPending = false
-    func newSecret() {
+    var addName = ""
+    func newSecret(name: String = "") {
+        addName = name
         addPending = true
         showMain()
     }
@@ -127,11 +129,12 @@ struct QuickSearchView: View {
                     .foregroundStyle(LinearGradient(colors: [.indigo, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
                     .accessibilityHidden(true)
                 TextField("Secret: name or comment", text: $query)
-                    .accessibilityLabel("Search secrets. Return copies the selected one")
+                    .accessibilityLabel("Search secrets. Return copies the reference, Shift-Return the value")
                     .textFieldStyle(.plain)
                     .font(.system(size: 22, weight: .regular))
                     .focused($focused)
-                    .onSubmit { copySelected() }
+                    .onKeyPress(keys: [.return]) { press in submit(value: press.modifiers.contains(.shift)); return .handled }
+                    .onSubmit { submit(value: Store.shiftDown) }
                     .onKeyPress(.downArrow) { index = min(index + 1, max(results.count - 1, 0)); return .handled }
                     .onKeyPress(.upArrow) { index = max(index - 1, 0); return .handled }
                     .onKeyPress(.escape) { close(); return .handled }
@@ -143,6 +146,10 @@ struct QuickSearchView: View {
                 VStack(spacing: 8) {
                     Image(systemName: "magnifyingglass").font(.system(size: 28)).foregroundStyle(.tertiary)
                     Text("Nothing found").foregroundStyle(.secondary)
+                    if let n = Parse.suggestedName(query) {
+                        Button { submit(value: false) } label: { Label("Create \(n)", systemImage: "plus") }
+                            .buttonStyle(.bordered).padding(.top, 4)
+                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -152,7 +159,7 @@ struct QuickSearchView: View {
                             ForEach(Array(results.enumerated()), id: \.element.id) { i, s in
                                 QuickRow(secret: s, selected: i == index)
                                     .id(i)
-                                    .onTapGesture { index = i; copySelected() }
+                                    .onTapGesture { index = i; submit(value: Store.shiftDown) }
                             }
                         }
                         .padding(8)
@@ -162,8 +169,9 @@ struct QuickSearchView: View {
             }
             Divider().opacity(0.5)
             HStack(spacing: 14) {
-                Hint(keys: "↩", text: "copy")
-                Hint(keys: "↑↓", text: "select")
+                Hint(keys: "↩", text: "reference")
+                Hint(keys: "⇧↩", text: "value")
+                Hint(keys: "⌘N", text: "new")
                 Hint(keys: "esc", text: "close")
                 Spacer()
                 Button {
@@ -180,15 +188,27 @@ struct QuickSearchView: View {
         .frame(width: 640, height: 420)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.primary.opacity(0.08)))
+        .background { Button("") { newSecret() }.keyboardShortcut("n").hidden() }
         .onChange(of: query) { _, _ in index = 0 }
         .onAppear { focused = true }
     }
 
-    private func copySelected() {
-        guard results.indices.contains(index) else { return }
+    // A found secret: the reference, or the value with ⇧. Nothing found: a new secret with the
+    // query as its name (025).
+    private func submit(value: Bool) {
+        guard results.indices.contains(index) else {
+            if Parse.suggestedName(query) != nil { newSecret() }
+            return
+        }
         let name = results[index].name
         close()  // the Touch ID window takes the focus anyway; the HUD shows the result
-        Task { await store.copy(name) }
+        Task { await store.pick(name, value: value) }
+    }
+
+    private func newSecret() {
+        let n = Parse.suggestedName(query) ?? ""
+        close()
+        Navigation.shared.newSecret(name: n)
     }
 }
 

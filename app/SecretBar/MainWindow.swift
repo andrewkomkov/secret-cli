@@ -89,7 +89,7 @@ struct MainWindow: View {
                             SecretCard(secret: s, sheet: $sheet, deleting: $deleting).id(s.name)
                         } else {
                             ContentUnavailableView("Select a Secret", systemImage: "key.horizontal",
-                                                   description: Text("↩ copies the value, ⌘N adds a secret"))
+                                                   description: Text("↩ copies the reference, ⇧↩ the value, ⌘N adds a secret"))
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -184,9 +184,9 @@ struct SecretList: View {
                     }
                 }
                 .listStyle(.inset)
-                .onKeyPress(.return) {
+                .onKeyPress(keys: [.return]) { press in
                     guard let n = nav.selection else { return .ignored }
-                    Task { await store.copy(n) }
+                    Task { await store.pick(n, value: press.modifiers.contains(.shift)) }
                     return .handled
                 }
             }
@@ -457,6 +457,7 @@ struct EditorSheet: View {
         }
         .frame(width: 480)
         .onAppear {
+            if editing == nil { name = Navigation.shared.addName; Navigation.shared.addName = "" }
             if let s = editing {
                 comment = s.comment
                 if let d = Parse.day(s.expiry) { hasExpiry = true; expiry = d }

@@ -120,13 +120,19 @@ struct MenuBarView: View {
                     Button { Task { await store.lock() } } label: { Image(systemName: "lock.fill") }
                         .buttonStyle(.borderless).help("Lock now")
                 }
+                Button { Navigation.shared.newSecret(name: Parse.suggestedName(query) ?? "") } label: {
+                    Image(systemName: "plus").font(.system(size: 13, weight: .semibold))
+                }
+                .buttonStyle(.borderless).help("New secret (⌘N)").accessibilityLabel("New Secret")
+                .keyboardShortcut("n")
             }
             .padding(.horizontal, 14).padding(.top, 14).padding(.bottom, 10)
 
             HStack(spacing: 6) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField("Find and copy", text: $query).textFieldStyle(.plain).focused($focused)
-                    .onSubmit { if let s = results.first { Task { await store.copy(s.name) } } }
+                TextField("Find: ↩ reference, ⇧↩ value", text: $query).textFieldStyle(.plain).focused($focused)
+                    .onKeyPress(keys: [.return]) { press in submit(value: press.modifiers.contains(.shift)); return .handled }
+                    .onSubmit { submit(value: Store.shiftDown) }
             }
             .padding(.horizontal, 10).padding(.vertical, 7)
             .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(Color.primary.opacity(0.06)))
@@ -147,6 +153,10 @@ struct MenuBarView: View {
             ScrollView {
                 LazyVStack(spacing: 1) {
                     ForEach(results) { s in MenuRow(secret: s) }
+                    if results.isEmpty, let n = Parse.suggestedName(query) {
+                        Button { Navigation.shared.newSecret(name: n) } label: { Label("Create \(n)", systemImage: "plus") }
+                            .buttonStyle(.bordered).padding(.top, 16)
+                    }
                 }
                 .padding(.horizontal, 6).padding(.vertical, 6)
             }
@@ -185,6 +195,11 @@ struct MenuBarView: View {
         }
         .onDisappear { store.visibleWindows -= 1 }
     }
+
+    private func submit(value: Bool) {
+        if let s = results.first { Task { await store.pick(s.name, value: value) } }
+        else if let n = Parse.suggestedName(query) { Navigation.shared.newSecret(name: n) }
+    }
 }
 
 struct MenuRow: View {
@@ -203,21 +218,21 @@ struct MenuRow: View {
             }
             Spacer(minLength: 4)
             ExpiryBadge(secret: secret)
-            Image(systemName: "doc.on.doc").font(.system(size: 11)).foregroundStyle(.secondary).opacity(hover ? 1 : 0)
+            Image(systemName: "link").font(.system(size: 11)).foregroundStyle(.secondary).opacity(hover ? 1 : 0)
         }
         .padding(.horizontal, 8).padding(.vertical, 6)
         .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(hover ? Color.primary.opacity(0.07) : .clear))
         .contentShape(Rectangle())
         .onHover { hover = $0 }
-        .onTapGesture { Task { await store.copy(secret.name) } }
-        .help("Click to copy the value")
+        .onTapGesture { Task { await store.pick(secret.name, value: Store.shiftDown) } }
+        .help("Click copies the reference, ⇧-click the value")
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
-        .accessibilityHint("Copy the value")
-        .accessibilityAction { Task { await store.copy(secret.name) } }
+        .accessibilityHint("Copy the reference")
+        .accessibilityAction { store.copyReference(secret.name) }
         .contextMenu {
-            Button("Copy Value") { Task { await store.copy(secret.name) } }
             Button("Copy Reference secret:\(secret.name)") { store.copyReference(secret.name) }
+            Button("Copy Value") { Task { await store.copy(secret.name) } }
             Button("Open in SecretBar") { Navigation.shared.select(secret.name) }
         }
     }
