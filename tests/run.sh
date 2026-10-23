@@ -656,7 +656,7 @@ else
 fi
 
 # --- 012: SecretBar. Разбор вывода команд (--selftest); бинарник без entitlements и без вызовов keychain
-APP_SUM="$(cat "$ROOT"/app/SecretBar/*.swift "$ROOT/app/SecretBar.xcodeproj/project.pbxproj" "$ROOT"/app/SecretBar/Assets.xcassets/AppIcon.appiconset/Contents.json | shasum -a 256 | cut -d' ' -f1)"
+APP_SUM="$(cat "$ROOT"/app/SecretBar/*.swift "$ROOT/app/SecretBar.xcodeproj/project.pbxproj" "$ROOT"/app/SecretBar/Assets.xcassets/AppIcon.appiconset/Contents.json "$ROOT/app/SecretBar/Localizable.xcstrings" | shasum -a 256 | cut -d' ' -f1)"
 if [ ! -x "$ROOT/build/SecretBar.app/Contents/MacOS/SecretBar" ] || [ "$(cat "$ROOT/build/SecretBar.src-sha256" 2>/dev/null)" != "$APP_SUM" ]; then
   "$ROOT/app/build.sh" "$ROOT/build" >/dev/null 2>&1 || true
 fi
@@ -737,6 +737,10 @@ check "hook blocks: secret copy X" bash -c "$(declare -f hook); HOOK='$HOOK'; ho
 check "hook passes: secret migrate --back" bash -c "$(declare -f hook); HOOK='$HOOK'; hook 'secret migrate --back'"
 check "hook passes: helper/store/build-vault.sh Release build" bash -c "$(declare -f hook); HOOK='$HOOK'; hook 'helper/store/build-vault.sh Release build'"
 check "hook passes: cat build/secret-vault.src-sha256" bash -c "$(declare -f hook); HOOK='$HOOK'; hook 'cat build/secret-vault.src-sha256'"
+
+check "024: version" bash -c "'$SECRET' version | grep -qxE 'secret [0-9]+\.[0-9]+\.[0-9]+'"
+check "024: --version" test "$(s --version)" = "$(s version)"
+check "024: version is marked for release-please" grep -qE '^VERSION="[0-9.]+" # x-release-please-version$' "$SECRET"
 
 echo
 echo "passed: $pass, failed: $fail"
