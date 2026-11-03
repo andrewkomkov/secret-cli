@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/andrewkomkov/secret-cli/compare/v1.2.0...v1.3.0) (2026-11-03)
+
+
+### Features
+
+* **cookie:** import Safari cookies into the store ([7230a95](https://github.com/andrewkomkov/secret-cli/commit/7230a95e467a513192a12077ff7711c1a0deac5b))
+
 ## [1.2.0](https://github.com/andrewkomkov/secret-cli/compare/v1.1.0...v1.2.0) (2026-10-23)
 
 
