@@ -127,6 +127,7 @@ Claude Code останавливает команду.
 | **Генерация** | `secret gen` создаёт случайный пароль сразу в keychain, его не видит никто |
 | **Маскировка вывода** | `secret run --mask` заменяет значения на `***` в stdout и stderr, в том числе в base64 и URL-кодировании. Под Claude Code включена всегда |
 | **Ссылки в `.env`** | `TOKEN=secret:MY_TOKEN` вместо значения; `secret import` переносит готовый `.env` |
+| **Cookie Safari** | `secret cookie pull` переносит cookie сессии из Safari в хранилище, и агент работает на сайте без API. Значение не попадает в чат |
 | **Журнал доступа** | `secret log`: кто (`agent` или `human`), когда, какие секреты. Значений в журнале нет |
 | **Хук Claude Code** | останавливает команды агента, которые печатают значения |
 | **Touch ID** | в хранилище Secure Enclave ключ из чипа Mac работает только после Touch ID или Apple Watch. В файловом keychain — защищённый режим: значения читает только подписанный helper |
@@ -168,6 +169,25 @@ secret gh PROD_DB_URL DATABASE_URL -R owner/repo -e production
 GitHub хранит значение зашифрованным и не отдаёт его обратно. Команде нужен `gh` с
 `gh auth login`. Сеть нужна только `secret gh`.
 
+**Cookie Safari**
+
+```sh
+secret cookie ls grafana.example.com                                   # имена, пути, флаги, срок; значений нет
+secret cookie pull grafana.example.com grafana_session --as SHOP_GRAFANA_SESSION
+secret cookie pull example.com sid --path /app --as SHOP_SID           # если подходит несколько путей
+```
+
+`pull` пишет значение в хранилище через пайп, с комментарием `safari cookie DOMAIN NAME` и датой
+протухания cookie, поэтому `secret ls --expiring` предупредит заранее. Что важно:
+
+- Safari хранит cookie в файле, который macOS защищает. Выдайте **Full Disk Access** приложению,
+  из которого запускаете `secret` (Terminal, iTerm). Без доступа команда печатает путь файла и
+  открывает панель настроек.
+- В файле лежат только persistent cookie (с датой протухания). Cookie «до закрытия вкладки» (in
+  memory) там нет. `sessionStorage` и `localStorage` — не cookie.
+- Только Safari. Хелпер cookie собирает `./install.sh` через `swiftc`; без него команда сообщает,
+  что возможность недоступна, остальные команды работают.
+
 <details>
 <summary><b>Полный справочник</b></summary>
 
@@ -186,6 +206,8 @@ GitHub хранит значение зашифрованным и не отда
 | `secret get NAME` | напечатать значение |
 | `secret copy NAME [SECONDS]` | в буфер обмена; через SECONDS (по умолчанию 30) буфер очищается, если в нём то же значение |
 | `secret gh NAME [GH_NAME] [-R OWNER/REPO] [-e ENV] [-o ORG [-v VISIBILITY]]` | записать значение в GitHub Actions secret GH_NAME (по умолчанию NAME) через `gh secret set`. Каждую отправку человек подтверждает в окне. Флаги идут в `gh` без изменений, `-b` и `-f` запрещены |
+| `secret cookie ls DOMAIN` | список cookie Safari для DOMAIN (cookie `.example.com` покрывает и поддомены): имя, путь, `Secure`/`HTTPOnly`, срок. Значений нет. Нужен Full Disk Access |
+| `secret cookie pull DOMAIN NAME --as SECRET [--path PATH]` | записать значение cookie Safari в SECRET с комментарием `safari cookie DOMAIN NAME` и датой протухания cookie. `--path` выбирает одну из cookie с одним именем |
 | `secret mv [-f] OLD NEW` | переименовать со значением, комментарием и сроком |
 | `secret rm NAME` | удалить |
 | `secret run [--mask\|--no-mask] [-e FILE]... [SPEC...] -- CMD` | запустить CMD с секретами в окружении. SPEC — `NAME` или `VAR=NAME`. Без SPEC и `-e` читает `./.env`. Под Claude Code (`CLAUDECODE`) вывод маскируется всегда, `--no-mask` не действует |

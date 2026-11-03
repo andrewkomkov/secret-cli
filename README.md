@@ -129,6 +129,7 @@ Code hook stops the command.
 | **Output masking** | `secret run --mask` replaces values with `***` in stdout and stderr, also in base64 and URL encoding. Always on under Claude Code |
 | **References in `.env`** | `TOKEN=secret:MY_TOKEN` instead of the value; `secret import` moves an existing `.env` |
 | **GitHub Actions** | `secret gh NAME -R owner/repo` sends a value to `gh secret set` through stdin, after a confirmation dialog |
+| **Safari cookies** | `secret cookie pull` moves a session cookie from Safari into the store, so the agent acts on a site without an API. The value never reaches the chat |
 | **Access log** | `secret log`: who (`agent` or `human`), when, which secrets. No values in the log |
 | **Claude Code hook** | stops agent commands that would print values |
 | **Touch ID** | in the Secure Enclave store the key from the chip works only after Touch ID or Apple Watch |
@@ -171,6 +172,25 @@ secret gh PROD_DB_URL DATABASE_URL -R owner/repo -e production
 GitHub keeps the value encrypted and never gives it back. The command needs `gh` after
 `gh auth login`. Only `secret gh` uses the network.
 
+**Safari cookies**
+
+```sh
+secret cookie ls grafana.example.com                                   # names, paths, flags, expiry; no values
+secret cookie pull grafana.example.com grafana_session --as SHOP_GRAFANA_SESSION
+secret cookie pull example.com sid --path /app --as SHOP_SID           # when several paths match
+```
+
+`pull` writes the value to the store through a pipe, with the comment `safari cookie DOMAIN NAME`
+and the expiry date of the cookie, so `secret ls --expiring` warns in time. Notes:
+
+- Safari keeps its cookies in a file that macOS protects. Give **Full Disk Access** to the app
+  that runs `secret` (Terminal, iTerm). Without it the command prints the path of the file and
+  opens the settings pane.
+- Only persistent cookies (with an expiry date) are in the file. A cookie that lives until the tab
+  closes (in memory) is not there, and `sessionStorage` and `localStorage` are not cookies.
+- Safari only. The cookies helper is built by `./install.sh` with `swiftc`; without it the
+  command says it is not available and the other commands work.
+
 <details>
 <summary><b>Full reference</b></summary>
 
@@ -189,6 +209,8 @@ GitHub keeps the value encrypted and never gives it back. The command needs `gh`
 | `secret get NAME` | print the value |
 | `secret copy NAME [SECONDS]` | to the clipboard; after SECONDS (default 30) the clipboard is cleared if it still holds the value |
 | `secret gh NAME [GH_NAME] [-R OWNER/REPO] [-e ENV] [-o ORG [-v VISIBILITY]]` | store the value as the GitHub Actions secret GH_NAME (default NAME) through `gh secret set`. A human confirms each push in a dialog. Flags go to `gh` unchanged; `-b` and `-f` are refused |
+| `secret cookie ls DOMAIN` | list the Safari cookies of DOMAIN (a cookie of `.example.com` also covers its subdomains): name, path, `Secure`/`HTTPOnly`, expiry. Prints no values. Needs Full Disk Access |
+| `secret cookie pull DOMAIN NAME --as SECRET [--path PATH]` | store the value of the Safari cookie as SECRET with the comment `safari cookie DOMAIN NAME` and the cookie expiry date. `--path` picks one of several cookies with the same name |
 | `secret mv [-f] OLD NEW` | rename with the value, comment and expiry date |
 | `secret rm NAME` | delete |
 | `secret run [--mask\|--no-mask] [-e FILE]... [SPEC...] -- CMD` | run CMD with secrets in its environment. SPEC is `NAME` or `VAR=NAME`. Without SPEC and `-e` it reads `./.env`. Under Claude Code (`CLAUDECODE`) the output is always masked and `--no-mask` has no effect |

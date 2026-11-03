@@ -196,6 +196,11 @@ stored: SHOP_DB_PASSWORD</pre>
       <p><code>secret gh NAME -R owner/repo</code> pushes a value to <code>gh secret set</code> through stdin, after you confirm it.</p>
     </article>
     <article class="card reveal tilt">
+      <div class="card-ico">&#127850;</div>
+      <h3>Safari cookies</h3>
+      <p><code>secret cookie pull DOMAIN NAME --as SECRET</code> moves a session cookie into the store. Needs Full Disk Access; in-memory cookies are not in Safari's file.</p>
+    </article>
+    <article class="card reveal tilt">
       <div class="card-ico">.env</div>
       <h3>References, not values</h3>
       <p><code>TOKEN=secret:MY_TOKEN</code> in your <code>.env</code>. <code>secret import</code> moves an existing file; <code>secret check</code> shows what is missing.</p>
