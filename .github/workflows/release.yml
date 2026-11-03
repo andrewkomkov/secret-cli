@@ -28,22 +28,26 @@ jobs:
     if: needs.release-please.outputs.created == 'true'
     runs-on: ubuntu-latest
     env:
-      TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+      DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
       TAG: ${{ needs.release-please.outputs.tag }}
       VERSION: ${{ needs.release-please.outputs.version }}
       REPO: ${{ github.repository }}
     steps:
-      - name: No token
-        if: env.TAP_TOKEN == ''
-        run: echo "::warning::HOMEBREW_TAP_TOKEN is not set. Update url and sha256 in the tap by hand."
+      - name: No key
+        if: env.DEPLOY_KEY == ''
+        run: echo "::warning::HOMEBREW_TAP_DEPLOY_KEY is not set. Update url and sha256 in the tap by hand."
 
       - name: Update the tap
-        if: env.TAP_TOKEN != ''
+        if: env.DEPLOY_KEY != ''
         run: |
           set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s' "$DEPLOY_KEY" | base64 -d > ~/.ssh/tap && chmod 600 ~/.ssh/tap
+          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/tap -o IdentitiesOnly=yes"
           url="https://github.com/$REPO/archive/refs/tags/$TAG.tar.gz"
           sha="$(curl -fsSL --retry 5 "$url" | sha256sum | cut -d' ' -f1)"
-          git clone --depth 1 "https://x-access-token:$TAP_TOKEN@github.com/andrewkomkov/homebrew-secret.git" tap
+          git clone --depth 1 git@github.com:andrewkomkov/homebrew-secret.git tap
           cd tap
           sed -i -E "s|^  url \".*\"$|  url \"$url\"|; s|^  sha256 \".*\"$|  sha256 \"$sha\"|" Formula/secret.rb
           git diff --stat
