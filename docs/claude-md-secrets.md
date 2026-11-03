@@ -72,11 +72,13 @@ use the name. Do NOT guess a name.
 ## How to import a browser session
 
 - To act on a site without an API as the user, do NOT ask for the cookie value. Run
-  `secret cookie ls DOMAIN` to see the names, then
+  `secret cookie ls DOMAIN` to see the names and the profile of each cookie, then
   `secret cookie pull DOMAIN NAME --as PROJECT_NAME` to store the cookie. Use it later with
   `secret run --mask`.
-- `ls` shows no values. `pull` gives the secret the comment `safari cookie DOMAIN NAME` and the
-  expiry date of the cookie. If several paths match, add `--path PATH`.
+- `ls` shows no values. `pull` gives the secret the comment `safari cookie DOMAIN NAME, profile PROFILE`
+  and the expiry date of the cookie. If several paths match, add `--path PATH`. All Safari profiles
+  are read; with the same cookie in several profiles, `pull` takes the one that expires last. To
+  read one profile, add `--profile ID` (`default` or the ID from the `PROFILE` column).
 - The command needs Full Disk Access for the terminal app. If it opens the settings pane, tell the
   user and wait. Do NOT try to go around it. Only persistent Safari cookies are in the file: an
   in-memory cookie is not there.
