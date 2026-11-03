@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/andrewkomkov/secret-cli/compare/v1.3.0...v1.4.0) (2026-11-03)
+
+
+### Features
+
+* **cookie:** read cookies from all Safari profiles ([4ae0cb4](https://github.com/andrewkomkov/secret-cli/commit/4ae0cb48c122437913665d53c62c2af536fa24ef))
+
 ## [1.3.0](https://github.com/andrewkomkov/secret-cli/compare/v1.2.0...v1.3.0) (2026-11-03)
 
 
