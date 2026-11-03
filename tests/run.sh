@@ -655,6 +655,90 @@ else
   unset SECRET_TEST_STORE SECRET_TEST_STATE SECRET_TEST_AUTH SECRET_TEST_AUTH_LOG SECRET_TEST_VALUE_LOG
 fi
 
+# --- 027: Safari cookies (a synthetic Cookies.binarycookies, no Safari, no Full Disk Access)
+CK_DIR="$ROOT/build/test"
+CK="$CK_DIR/secret-cookies-test"
+if [ ! -x "$CK" ] || [ "$(cat "$CK_DIR/secret-cookies-test.src-sha256" 2>/dev/null)" != "$(shasum -a 256 "$ROOT/helper/cookies/main.swift" | cut -d' ' -f1)" ]; then
+  "$ROOT/helper/cookies/build.sh" Test "$CK_DIR" >/dev/null 2>&1 || rm -f "$CK"
+fi
+CKF="$TMP/Cookies.binarycookies"
+if [ -x "$CK" ]; then
+  mkdir -p "$TMP/mkc"
+  cat > "$TMP/mkc/main.swift" <<'SWIFT'
+import Foundation
+func le32(_ v: Int) -> [UInt8] { [UInt8(v & 255), UInt8((v >> 8) & 255), UInt8((v >> 16) & 255), UInt8((v >> 24) & 255)] }
+func be32(_ v: Int) -> [UInt8] { le32(v).reversed() }
+func le64(_ d: Double) -> [UInt8] { let b = d.bitPattern; return (0..<8).map { UInt8((b >> UInt64(8 * $0)) & 255) } }
+// domain, name, path, value, flags, expiry (Mac epoch seconds, 0 = none)
+let rows: [(String, String, String, String, Int, Double)] = [
+    (".shop.test", "sid", "/", "VAL-SID-1", 5, 802000000),
+    ("www.shop.test", "pref", "/", "VAL-PREF", 0, 0),
+    (".shop.test", "dup", "/a", "VAL-DUP-A", 1, 0),
+    (".shop.test", "dup", "/b", "VAL-DUP-B", 1, 0),
+    (".other.test", "sid", "/", "VAL-OTHER", 1, 0),
+]
+func record(_ r: (String, String, String, String, Int, Double)) -> [UInt8] {
+    let strs = [r.0, r.1, r.2, r.3].map { Array($0.utf8) + [0] }
+    var offs: [Int] = []
+    var o = 56
+    for s in strs { offs.append(o); o += s.count }
+    var b = le32(o) + le32(0) + le32(r.4) + le32(0)
+    for x in offs { b += le32(x) }
+    b += [UInt8](repeating: 0, count: 8) + le64(r.5) + le64(0)
+    for s in strs { b += s }
+    return b
+}
+let recs = rows.map(record)
+var page = be32(0x100) + le32(recs.count)
+var off = 8 + 4 * recs.count + 4
+for r in recs { page += le32(off); off += r.count }
+page += le32(0)
+for r in recs { page += r }
+let file = Array("cook".utf8) + be32(1) + be32(page.count) + page
+try! Data(file).write(to: URL(fileURLWithPath: CommandLine.arguments[1]))
+SWIFT
+  swiftc -swift-version 5 "$TMP/mkc/main.swift" -o "$TMP/mkc/mk" 2>/dev/null && "$TMP/mkc/mk" "$CKF"
+fi
+if [ ! -s "$CKF" ]; then
+  echo "skip  027: no test build of the cookies helper or the fixture (swiftc is needed)"
+else
+  export SECRET_TEST_COOKIES="$CKF" SECRET_COOKIES_HELPER="$CK"
+  TAB=$'\t'
+  check "027: list shows name, path, flags and date" bash -c "'$CK' list shop.test | grep -qE '^sid${TAB}/${TAB}Secure,HTTPOnly${TAB}20[0-9]{2}-[0-9]{2}-[0-9]{2}\$'"
+  check "027: list shows no value" bash -c "! '$CK' list shop.test | grep -q VAL-"
+  check "027: list: a cookie without flags and date" bash -c "'$CK' list www.shop.test | grep -qx \"pref${TAB}/${TAB}-${TAB}-\""
+  check "027: list: a leading-dot cookie covers a subdomain" bash -c "'$CK' list api.shop.test | grep -q '^sid'"
+  check "027: list: a host-only cookie does not cover its parent" bash -c "! '$CK' list shop.test | grep -q '^pref'"
+  check "027: list: other domains are not mixed in" bash -c "! '$CK' list shop.test | grep -q other"
+  check "027: list: an empty domain exits 0 with no output" bash -c "out=\$('$CK' list none.test); [ \$? -eq 0 ] && [ -z \"\$out\" ]"
+  check "027: value" test "$("$CK" value shop.test sid)" = VAL-SID-1
+  check "027: value of the other domain" test "$("$CK" value other.test sid)" = VAL-OTHER
+  check "027: value: several paths need PATH, no value shown" bash -c "out=\$('$CK' value shop.test dup 2>&1); [ \$? -eq 3 ] && [[ \$out == */a* && \$out == */b* && \$out != *VAL-* ]]"
+  check "027: value with PATH" test "$("$CK" value shop.test dup /b)" = VAL-DUP-B
+  check "027: value: missing cookie exits 1" bash -c "'$CK' value shop.test nope 2>/dev/null; [ \$? -eq 1 ]"
+  : > "$TMP/noperm.bin"; chmod 000 "$TMP/noperm.bin"
+  check "027: an unreadable file exits 77" bash -c "SECRET_TEST_COOKIES='$TMP/noperm.bin' '$CK' list x.test 2>/dev/null; [ \$? -eq 77 ]"
+  chmod 600 "$TMP/noperm.bin"
+  printf 'cookXXXXXXXX' > "$TMP/junk.bin"
+  check "027: a damaged file is an error, not a crash" bash -c "SECRET_TEST_COOKIES='$TMP/junk.bin' '$CK' list x.test 2>/dev/null; [ \$? -eq 65 ]"
+  check "027: cookie ls prints a table without values" bash -c "out=\$('$SECRET' cookie ls shop.test); [[ \$out == *NAME* && \$out == *sid* && \$out != *VAL-* ]]"
+  s cookie pull shop.test sid --as CK_SID >/dev/null 2>&1
+  check "027: pull stores the value" test "$(s get CK_SID)" = VAL-SID-1
+  check "027: pull sets the comment" test "$(s note CK_SID)" = "safari cookie shop.test sid"
+  check "027: pull sets the expiry from the cookie" bash -c "'$SECRET' ls -l | grep -qE '^CK_SID +20[0-9]{2}-[0-9]{2}-[0-9]{2} +safari cookie shop.test sid\$'"
+  s cookie pull www.shop.test pref --as CK_PREF >/dev/null 2>&1
+  check "027: pull of a cookie without a date sets no expiry" bash -c "'$SECRET' ls -l | grep -E '^CK_PREF ' | grep -vqE '20[0-9]{2}-[0-9]{2}-[0-9]{2}'"
+  check "027: pull: several paths without --path fail, nothing stored" bash -c "! '$SECRET' cookie pull shop.test dup --as CK_DUP 2>/dev/null && ! '$SECRET' has CK_DUP"
+  s cookie pull shop.test dup --path /a --as CK_DUP >/dev/null 2>&1
+  check "027: pull --path" test "$(s get CK_DUP)" = VAL-DUP-A
+  check "027: pull: a missing cookie fails, nothing stored" bash -c "! '$SECRET' cookie pull shop.test nope --as CK_NOPE 2>/dev/null && ! '$SECRET' has CK_NOPE"
+  check "027: pull needs --as" bash -c "! '$SECRET' cookie pull shop.test sid 2>/dev/null"
+  check "027: pull checks the secret name" bash -c "! '$SECRET' cookie pull shop.test sid --as 'bad name' 2>/dev/null"
+  check "027: pull keeps the value out of the output" bash -c "out=\$('$SECRET' cookie pull shop.test sid --as CK_SID 2>&1); [[ \$out != *VAL-* ]]"
+  check "027: no helper: unavailable, other commands work" bash -c "out=\$(SECRET_COOKIES_HELPER='$TMP/none' '$SECRET' cookie ls shop.test 2>&1); [ \$? -ne 0 ] && [[ \$out == *'not available'* ]] && '$SECRET' has CK_SID"
+  unset SECRET_TEST_COOKIES SECRET_COOKIES_HELPER
+fi
+
 # --- 012: SecretBar. Разбор вывода команд (--selftest); бинарник без entitlements и без вызовов keychain
 APP_SUM="$(cat "$ROOT"/app/SecretBar/*.swift "$ROOT/app/SecretBar.xcodeproj/project.pbxproj" "$ROOT"/app/SecretBar/Assets.xcassets/AppIcon.appiconset/Contents.json "$ROOT/app/SecretBar/Localizable.xcstrings" | shasum -a 256 | cut -d' ' -f1)"
 if [ ! -x "$ROOT/build/SecretBar.app/Contents/MacOS/SecretBar" ] || [ "$(cat "$ROOT/build/SecretBar.src-sha256" 2>/dev/null)" != "$APP_SUM" ]; then

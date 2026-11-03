@@ -59,6 +59,23 @@ vault_build() {
   esac
 }
 
+# Helper of the Safari cookie import (027): swiftc, a new build when the source changed.
+cookies_build() {
+  local dir="$root/build" sum rc=0
+  sum="$(shasum -a 256 "$root/helper/cookies/main.swift" | cut -d' ' -f1)"
+  if [ -x "$dir/secret-cookies" ] && [ "$(cat "$dir/secret-cookies.src-sha256" 2>/dev/null)" = "$sum" ] \
+      && codesign --verify --strict "$dir/secret-cookies" 2>/dev/null; then
+    echo "cookies helper: $dir/secret-cookies (up to date)" >&2
+    return 0
+  fi
+  "$root/helper/cookies/build.sh" Release "$dir" >/dev/null || rc=$?
+  case $rc in
+    0) echo "cookies helper: $dir/secret-cookies" >&2 ;;
+    2) echo "cookies helper: not built, swiftc not found, secret cookie is not available" >&2 ;;
+    *) echo "cookies helper: build failed, secret cookie is not available" >&2 ;;
+  esac
+}
+
 drop_legacy
 [ $legacy_only -eq 0 ] || exit 0
 src="$root/bin/secret"
@@ -105,6 +122,7 @@ else
 fi
 
 vault_build || true
+cookies_build || true
 
 # SecretBar (012, 014): приложение в строке меню, profile ему не нужен. Ставится в /Applications:
 # App Intents и Spotlight работают с приложениями оттуда. С --app ставится; если уже стоит,
