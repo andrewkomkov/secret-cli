@@ -172,17 +172,21 @@ GitHub хранит значение зашифрованным и не отда
 **Cookie Safari**
 
 ```sh
-secret cookie ls grafana.example.com                                   # имена, пути, флаги, срок; значений нет
+secret cookie ls grafana.example.com                                   # имена, пути, флаги, срок, профиль; значений нет
 secret cookie pull grafana.example.com grafana_session --as SHOP_GRAFANA_SESSION
 secret cookie pull example.com sid --path /app --as SHOP_SID           # если подходит несколько путей
+secret cookie pull example.com sid --profile PROFILE --as SHOP_SID     # только один профиль Safari
 ```
 
-`pull` пишет значение в хранилище через пайп, с комментарием `safari cookie DOMAIN NAME` и датой
+`pull` пишет значение в хранилище через пайп, с комментарием `safari cookie DOMAIN NAME, profile PROFILE` и датой
 протухания cookie, поэтому `secret ls --expiring` предупредит заранее. Что важно:
 
 - Safari хранит cookie в файле, который macOS защищает. Выдайте **Full Disk Access** приложению,
   из которого запускаете `secret` (Terminal, iTerm). Без доступа команда печатает путь файла и
   открывает панель настроек.
+- `secret` читает все профили Safari: основной и каждый профиль в `WebsiteDataStore`. `ls` показывает
+  профиль в колонке `PROFILE` (`default` или ID профиля). Если один cookie есть в нескольких
+  профилях, `pull` берёт тот, что протухает позже. `--profile ID` читает только один профиль.
 - В файле лежат только persistent cookie (с датой протухания). Cookie «до закрытия вкладки» (in
   memory) там нет. `sessionStorage` и `localStorage` — не cookie.
 - Только Safari. Хелпер cookie собирает `./install.sh` через `swiftc`; без него команда сообщает,
@@ -206,8 +210,8 @@ secret cookie pull example.com sid --path /app --as SHOP_SID           # есл�
 | `secret get NAME` | напечатать значение |
 | `secret copy NAME [SECONDS]` | в буфер обмена; через SECONDS (по умолчанию 30) буфер очищается, если в нём то же значение |
 | `secret gh NAME [GH_NAME] [-R OWNER/REPO] [-e ENV] [-o ORG [-v VISIBILITY]]` | записать значение в GitHub Actions secret GH_NAME (по умолчанию NAME) через `gh secret set`. Каждую отправку человек подтверждает в окне. Флаги идут в `gh` без изменений, `-b` и `-f` запрещены |
-| `secret cookie ls DOMAIN` | список cookie Safari для DOMAIN (cookie `.example.com` покрывает и поддомены): имя, путь, `Secure`/`HTTPOnly`, срок. Значений нет. Нужен Full Disk Access |
-| `secret cookie pull DOMAIN NAME --as SECRET [--path PATH]` | записать значение cookie Safari в SECRET с комментарием `safari cookie DOMAIN NAME` и датой протухания cookie. `--path` выбирает одну из cookie с одним именем |
+| `secret cookie ls [--profile ID] DOMAIN` | список cookie Safari для DOMAIN во всех профилях (cookie `.example.com` покрывает и поддомены): имя, путь, `Secure`/`HTTPOnly`, срок, профиль. Значений нет. Нужен Full Disk Access |
+| `secret cookie pull DOMAIN NAME --as SECRET [--path PATH] [--profile ID]` | записать значение cookie Safari в SECRET с комментарием `safari cookie DOMAIN NAME, profile PROFILE` и датой протухания cookie. `--path` выбирает одну из cookie с одним именем. При нескольких профилях берётся cookie с самой поздней датой; `--profile` выбирает профиль |
 | `secret mv [-f] OLD NEW` | переименовать со значением, комментарием и сроком |
 | `secret rm NAME` | удалить |
 | `secret run [--mask\|--no-mask] [-e FILE]... [SPEC...] -- CMD` | запустить CMD с секретами в окружении. SPEC — `NAME` или `VAR=NAME`. Без SPEC и `-e` читает `./.env`. Под Claude Code (`CLAUDECODE`) вывод маскируется всегда, `--no-mask` не действует |

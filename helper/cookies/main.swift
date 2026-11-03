@@ -1,14 +1,15 @@
-// secret-cookies: reads Safari Cookies.binarycookies (027). Only `value` prints a value.
-//   list DOMAIN               name<TAB>path<TAB>flags<TAB>expiry
-//   value DOMAIN NAME [PATH]  the value of one cookie on stdout
-//   path                      the file that is read
+// secret-cookies: reads Safari Cookies.binarycookies of all profiles (027). Only `value` prints a value.
+//   [--profile ID] list DOMAIN               name<TAB>path<TAB>flags<TAB>expiry<TAB>profile
+//   [--profile ID] value DOMAIN NAME [PATH]  the value of one cookie on stdout
+//   [--profile ID] which DOMAIN NAME [PATH]  profile<TAB>expiry of the cookie that value gives
+//   [--profile ID] path                      profile<TAB>file of each file that is read
 // Exit: 1 not found, 3 several match (paths on stderr), 64 usage, 65 bad file, 77 no access.
 import Foundation
 
 #if SECRET_TEST
-let cookiesPath = ProcessInfo.processInfo.environment["SECRET_TEST_COOKIES"] ?? "/nonexistent/Cookies.binarycookies"
+let safariLibrary = ProcessInfo.processInfo.environment["SECRET_TEST_SAFARI"] ?? "/nonexistent"
 #else
-let cookiesPath = NSHomeDirectory() + "/Library/Containers/com.apple.Safari/Data/Library/Cookies/Cookies.binarycookies"
+let safariLibrary = NSHomeDirectory() + "/Library/Containers/com.apple.Safari/Data/Library"
 #endif
 
 func fail(_ message: String, _ code: Int32 = 1) -> Never {
@@ -24,6 +25,7 @@ struct Cookie {
     var secure: Bool
     var httpOnly: Bool
     var expiry: Double? // Unix time, nil for a cookie without a date
+    var profile = ""
 }
 
 // Every read is bounds-checked: a damaged file ends in an error, not a crash.
@@ -93,22 +95,52 @@ func parse(_ bytes: [UInt8]) -> [Cookie]? {
     return out
 }
 
-func loadCookies() -> [Cookie] {
-    let fd = open(cookiesPath, O_RDONLY)
+struct Store { let profile: String; let path: String }
+
+// Safari keeps the default profile in Cookies/ and each other profile in WebsiteDataStore/<UUID>/.
+func stores() -> [Store] {
+    var out = [Store(profile: "default", path: safariLibrary + "/Cookies/Cookies.binarycookies")]
+    let base = safariLibrary + "/WebKit/WebsiteDataStore"
+    do {
+        for id in try FileManager.default.contentsOfDirectory(atPath: base).sorted() {
+            out.append(Store(profile: id, path: base + "/" + id + "/Cookies/Cookies.binarycookies"))
+        }
+    } catch let e as NSError where e.code == NSFileReadNoPermissionError {
+        fail("no access to \(base)", 77)
+    } catch {
+        // no WebsiteDataStore: Safari has only the default profile
+    }
+    return out
+}
+
+func load(_ s: Store) -> [Cookie] {
+    let fd = open(s.path, O_RDONLY)
     if fd < 0 {
-        if errno == EPERM || errno == EACCES { fail("no access to \(cookiesPath)", 77) }
-        if errno == ENOENT { fail("no cookie file: \(cookiesPath)", 1) }
-        fail("cannot open \(cookiesPath): \(String(cString: strerror(errno)))", 1)
+        if errno == ENOENT { return [] }
+        if errno == EPERM || errno == EACCES { fail("no access to \(s.path)", 77) }
+        fail("cannot open \(s.path): \(String(cString: strerror(errno)))", 1)
     }
     let h = FileHandle(fileDescriptor: fd, closeOnDealloc: true)
     var data = Data()
     do { data = try h.readToEnd() ?? Data() } catch {
         let code = (error as NSError).code
-        if code == Int(EPERM) || code == Int(EACCES) { fail("no access to \(cookiesPath)", 77) }
-        fail("cannot read \(cookiesPath)", 1)
+        if code == Int(EPERM) || code == Int(EACCES) { fail("no access to \(s.path)", 77) }
+        fail("cannot read \(s.path)", 1)
     }
-    guard let cookies = parse([UInt8](data)) else { fail("not a Cookies.binarycookies file: \(cookiesPath)", 65) }
-    return cookies
+    guard let cookies = parse([UInt8](data)) else { fail("not a Cookies.binarycookies file: \(s.path)", 65) }
+    return cookies.map { var c = $0; c.profile = s.profile; return c }
+}
+
+func selectedStores(_ profile: String?) -> [Store] {
+    let all = stores()
+    guard let p = profile else { return all }
+    let one = all.filter { $0.profile == p }
+    if one.isEmpty { fail("no Safari profile \(clean(p))", 1) }
+    return one
+}
+
+func allCookies(_ profile: String?) -> [Cookie] {
+    selectedStores(profile).flatMap(load)
 }
 
 // Like a browser: ".example.com" covers example.com and its subdomains, "example.com" that host only.
@@ -144,24 +176,44 @@ func clean(_ s: String) -> String {
 
 func err(_ s: String) { FileHandle.standardError.write(Data((s + "\n").utf8)) }
 
-let args = Array(CommandLine.arguments.dropFirst())
-switch args.first {
-case "list" where args.count == 2:
-    for c in loadCookies() where matches(c, args[1]) {
-        print([clean(c.name), clean(c.path), flagsText(c), dateText(c)].joined(separator: "\t"))
+// The same cookie in several profiles is one site login: the latest expiry is the newest login.
+func pick(_ cs: [Cookie], _ domain: String, _ name: String, _ path: String?) -> Cookie {
+    let found = cs.filter { matches($0, domain) && $0.name == name && (path == nil || $0.path == path) }
+    if found.isEmpty { fail("no cookie \(clean(name)) for \(clean(domain))", 1) }
+    var places: [String] = []
+    for c in found {
+        let p = clean(c.path) + "\t" + clean(c.domain)
+        if !places.contains(p) { places.append(p) }
     }
-case "value" where args.count == 3 || args.count == 4:
-    let found = loadCookies().filter { matches($0, args[1]) && $0.name == args[2] && (args.count == 3 || $0.path == args[3]) }
-    if found.isEmpty { fail("no cookie \(clean(args[2])) for \(clean(args[1]))", 1) }
-    if found.count > 1 {
-        let hint = args.count == 3 ? "give PATH" : "same path in several domains"
-        err("secret-cookies: \(found.count) cookies \(clean(args[2])) for \(clean(args[1])), \(hint):")
-        for c in found { err("  \(clean(c.path))\t\(clean(c.domain))") }
+    if places.count > 1 {
+        let hint = path == nil ? "give PATH" : "same path in several domains"
+        err("secret-cookies: \(places.count) cookies \(clean(name)) for \(clean(domain)), \(hint):")
+        for p in places { err("  \(p)") }
         exit(3)
     }
-    FileHandle.standardOutput.write(Data(found[0].value.utf8))
+    return found.max { ($0.expiry ?? 0) < ($1.expiry ?? 0) }!
+}
+
+var args = Array(CommandLine.arguments.dropFirst())
+var profile: String? = nil
+if args.first == "--profile" {
+    guard args.count >= 2 else { fail("--profile needs ID", 64) }
+    profile = args[1]
+    args.removeFirst(2)
+}
+switch args.first {
+case "list" where args.count == 2:
+    for c in allCookies(profile) where matches(c, args[1]) {
+        print([clean(c.name), clean(c.path), flagsText(c), dateText(c), clean(c.profile)].joined(separator: "\t"))
+    }
+case "value" where args.count == 3 || args.count == 4:
+    let c = pick(allCookies(profile), args[1], args[2], args.count == 4 ? args[3] : nil)
+    FileHandle.standardOutput.write(Data(c.value.utf8))
+case "which" where args.count == 3 || args.count == 4:
+    let c = pick(allCookies(profile), args[1], args[2], args.count == 4 ? args[3] : nil)
+    print([clean(c.profile), dateText(c)].joined(separator: "\t"))
 case "path" where args.count == 1:
-    print(cookiesPath)
+    for s in selectedStores(profile) { print(s.profile + "\t" + s.path) }
 default:
-    fail("usage: secret-cookies list DOMAIN | value DOMAIN NAME [PATH] | path", 64)
+    fail("usage: secret-cookies [--profile ID] list DOMAIN | value DOMAIN NAME [PATH] | which DOMAIN NAME [PATH] | path", 64)
 }

@@ -175,17 +175,21 @@ GitHub keeps the value encrypted and never gives it back. The command needs `gh`
 **Safari cookies**
 
 ```sh
-secret cookie ls grafana.example.com                                   # names, paths, flags, expiry; no values
+secret cookie ls grafana.example.com                                   # names, paths, flags, expiry, profile; no values
 secret cookie pull grafana.example.com grafana_session --as SHOP_GRAFANA_SESSION
 secret cookie pull example.com sid --path /app --as SHOP_SID           # when several paths match
+secret cookie pull example.com sid --profile PROFILE --as SHOP_SID     # one Safari profile only
 ```
 
-`pull` writes the value to the store through a pipe, with the comment `safari cookie DOMAIN NAME`
+`pull` writes the value to the store through a pipe, with the comment `safari cookie DOMAIN NAME, profile PROFILE`
 and the expiry date of the cookie, so `secret ls --expiring` warns in time. Notes:
 
 - Safari keeps its cookies in a file that macOS protects. Give **Full Disk Access** to the app
   that runs `secret` (Terminal, iTerm). Without it the command prints the path of the file and
   opens the settings pane.
+- `secret` reads all Safari profiles: the default one and each profile in `WebsiteDataStore`. `ls` shows the
+  profile in the `PROFILE` column (`default` or the profile ID). If the same cookie is in several
+  profiles, `pull` takes the one that expires last. `--profile ID` reads one profile only.
 - Only persistent cookies (with an expiry date) are in the file. A cookie that lives until the tab
   closes (in memory) is not there, and `sessionStorage` and `localStorage` are not cookies.
 - Safari only. The cookies helper is built by `./install.sh` with `swiftc`; without it the
@@ -209,8 +213,8 @@ and the expiry date of the cookie, so `secret ls --expiring` warns in time. Note
 | `secret get NAME` | print the value |
 | `secret copy NAME [SECONDS]` | to the clipboard; after SECONDS (default 30) the clipboard is cleared if it still holds the value |
 | `secret gh NAME [GH_NAME] [-R OWNER/REPO] [-e ENV] [-o ORG [-v VISIBILITY]]` | store the value as the GitHub Actions secret GH_NAME (default NAME) through `gh secret set`. A human confirms each push in a dialog. Flags go to `gh` unchanged; `-b` and `-f` are refused |
-| `secret cookie ls DOMAIN` | list the Safari cookies of DOMAIN (a cookie of `.example.com` also covers its subdomains): name, path, `Secure`/`HTTPOnly`, expiry. Prints no values. Needs Full Disk Access |
-| `secret cookie pull DOMAIN NAME --as SECRET [--path PATH]` | store the value of the Safari cookie as SECRET with the comment `safari cookie DOMAIN NAME` and the cookie expiry date. `--path` picks one of several cookies with the same name |
+| `secret cookie ls [--profile ID] DOMAIN` | list the Safari cookies of DOMAIN in all profiles (a cookie of `.example.com` also covers its subdomains): name, path, `Secure`/`HTTPOnly`, expiry, profile. Prints no values. Needs Full Disk Access |
+| `secret cookie pull DOMAIN NAME --as SECRET [--path PATH] [--profile ID]` | store the value of the Safari cookie as SECRET with the comment `safari cookie DOMAIN NAME, profile PROFILE` and the cookie expiry date. `--path` picks one of several cookies with the same name. With several profiles, the cookie that expires last; `--profile` picks a profile |
 | `secret mv [-f] OLD NEW` | rename with the value, comment and expiry date |
 | `secret rm NAME` | delete |
 | `secret run [--mask\|--no-mask] [-e FILE]... [SPEC...] -- CMD` | run CMD with secrets in its environment. SPEC is `NAME` or `VAR=NAME`. Without SPEC and `-e` it reads `./.env`. Under Claude Code (`CLAUDECODE`) the output is always masked and `--no-mask` has no effect |

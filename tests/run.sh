@@ -661,7 +661,11 @@ CK="$CK_DIR/secret-cookies-test"
 if [ ! -x "$CK" ] || [ "$(cat "$CK_DIR/secret-cookies-test.src-sha256" 2>/dev/null)" != "$(shasum -a 256 "$ROOT/helper/cookies/main.swift" | cut -d' ' -f1)" ]; then
   "$ROOT/helper/cookies/build.sh" Test "$CK_DIR" >/dev/null 2>&1 || rm -f "$CK"
 fi
-CKF="$TMP/Cookies.binarycookies"
+# fixture: a directory like Safari's Library, the default profile and profiles in WebsiteDataStore/<UUID>
+CKS="$TMP/safari"
+UA=AAAAAAAA-1111-2222-3333-444444444444
+UB=BBBBBBBB-1111-2222-3333-444444444444
+CKF="$CKS/Cookies/Cookies.binarycookies"
 if [ -x "$CK" ]; then
   mkdir -p "$TMP/mkc"
   cat > "$TMP/mkc/main.swift" <<'SWIFT'
@@ -670,14 +674,26 @@ func le32(_ v: Int) -> [UInt8] { [UInt8(v & 255), UInt8((v >> 8) & 255), UInt8((
 func be32(_ v: Int) -> [UInt8] { le32(v).reversed() }
 func le64(_ d: Double) -> [UInt8] { let b = d.bitPattern; return (0..<8).map { UInt8((b >> UInt64(8 * $0)) & 255) } }
 // domain, name, path, value, flags, expiry (Mac epoch seconds, 0 = none)
-let rows: [(String, String, String, String, Int, Double)] = [
-    (".shop.test", "sid", "/", "VAL-SID-1", 5, 802000000),
-    ("www.shop.test", "pref", "/", "VAL-PREF", 0, 0),
-    (".shop.test", "dup", "/a", "VAL-DUP-A", 1, 0),
-    (".shop.test", "dup", "/b", "VAL-DUP-B", 1, 0),
-    (".other.test", "sid", "/", "VAL-OTHER", 1, 0),
+// argv: output file, row set (default, profile-a)
+typealias Row = (String, String, String, String, Int, Double)
+let sets: [String: [Row]] = [
+    "default": [
+        (".shop.test", "sid", "/", "VAL-SID-1", 5, 802000000),
+        ("www.shop.test", "pref", "/", "VAL-PREF", 0, 0),
+        (".shop.test", "dup", "/a", "VAL-DUP-A", 1, 0),
+        (".shop.test", "dup", "/b", "VAL-DUP-B", 1, 0),
+        (".other.test", "sid", "/", "VAL-OTHER", 1, 0),
+        (".shop.test", "shared", "/", "VAL-SH-DEF", 1, 802000000),
+        (".shop.test", "split", "/x", "VAL-SPLIT-X", 1, 0),
+    ],
+    "profile-a": [
+        (".shop.test", "onlyp", "/", "VAL-ONLY-P", 1, 802000000),
+        (".shop.test", "shared", "/", "VAL-SH-PROF", 1, 810000000),
+        (".shop.test", "split", "/y", "VAL-SPLIT-Y", 1, 0),
+    ],
 ]
-func record(_ r: (String, String, String, String, Int, Double)) -> [UInt8] {
+let rows = sets[CommandLine.arguments[2]]!
+func record(_ r: Row) -> [UInt8] {
     let strs = [r.0, r.1, r.2, r.3].map { Array($0.utf8) + [0] }
     var offs: [Int] = []
     var o = 56
@@ -697,16 +713,18 @@ for r in recs { page += r }
 let file = Array("cook".utf8) + be32(1) + be32(page.count) + page
 try! Data(file).write(to: URL(fileURLWithPath: CommandLine.arguments[1]))
 SWIFT
-  swiftc -swift-version 5 "$TMP/mkc/main.swift" -o "$TMP/mkc/mk" 2>/dev/null && "$TMP/mkc/mk" "$CKF"
+  mkdir -p "$CKS/Cookies" "$CKS/WebKit/WebsiteDataStore/$UA/Cookies" "$CKS/WebKit/WebsiteDataStore/$UB"
+  swiftc -swift-version 5 "$TMP/mkc/main.swift" -o "$TMP/mkc/mk" 2>/dev/null && "$TMP/mkc/mk" "$CKF" default \
+    && "$TMP/mkc/mk" "$CKS/WebKit/WebsiteDataStore/$UA/Cookies/Cookies.binarycookies" profile-a
 fi
 if [ ! -s "$CKF" ]; then
   echo "skip  027: no test build of the cookies helper or the fixture (swiftc is needed)"
 else
-  export SECRET_TEST_COOKIES="$CKF" SECRET_COOKIES_HELPER="$CK"
+  export SECRET_TEST_SAFARI="$CKS" SECRET_COOKIES_HELPER="$CK"
   TAB=$'\t'
-  check "027: list shows name, path, flags and date" bash -c "'$CK' list shop.test | grep -qE '^sid${TAB}/${TAB}Secure,HTTPOnly${TAB}20[0-9]{2}-[0-9]{2}-[0-9]{2}\$'"
+  check "027: list shows name, path, flags and date" bash -c "'$CK' list shop.test | grep -qE '^sid${TAB}/${TAB}Secure,HTTPOnly${TAB}20[0-9]{2}-[0-9]{2}-[0-9]{2}${TAB}default\$'"
   check "027: list shows no value" bash -c "! '$CK' list shop.test | grep -q VAL-"
-  check "027: list: a cookie without flags and date" bash -c "'$CK' list www.shop.test | grep -qx \"pref${TAB}/${TAB}-${TAB}-\""
+  check "027: list: a cookie without flags and date" bash -c "'$CK' list www.shop.test | grep -qx \"pref${TAB}/${TAB}-${TAB}-${TAB}default\""
   check "027: list: a leading-dot cookie covers a subdomain" bash -c "'$CK' list api.shop.test | grep -q '^sid'"
   check "027: list: a host-only cookie does not cover its parent" bash -c "! '$CK' list shop.test | grep -q '^pref'"
   check "027: list: other domains are not mixed in" bash -c "! '$CK' list shop.test | grep -q other"
@@ -716,16 +734,16 @@ else
   check "027: value: several paths need PATH, no value shown" bash -c "out=\$('$CK' value shop.test dup 2>&1); [ \$? -eq 3 ] && [[ \$out == */a* && \$out == */b* && \$out != *VAL-* ]]"
   check "027: value with PATH" test "$("$CK" value shop.test dup /b)" = VAL-DUP-B
   check "027: value: missing cookie exits 1" bash -c "'$CK' value shop.test nope 2>/dev/null; [ \$? -eq 1 ]"
-  : > "$TMP/noperm.bin"; chmod 000 "$TMP/noperm.bin"
-  check "027: an unreadable file exits 77" bash -c "SECRET_TEST_COOKIES='$TMP/noperm.bin' '$CK' list x.test 2>/dev/null; [ \$? -eq 77 ]"
-  chmod 600 "$TMP/noperm.bin"
-  printf 'cookXXXXXXXX' > "$TMP/junk.bin"
-  check "027: a damaged file is an error, not a crash" bash -c "SECRET_TEST_COOKIES='$TMP/junk.bin' '$CK' list x.test 2>/dev/null; [ \$? -eq 65 ]"
+  mkdir -p "$TMP/safari-noperm/Cookies"; : > "$TMP/safari-noperm/Cookies/Cookies.binarycookies"; chmod 000 "$TMP/safari-noperm/Cookies/Cookies.binarycookies"
+  check "027: an unreadable file exits 77" bash -c "SECRET_TEST_SAFARI='$TMP/safari-noperm' '$CK' list x.test 2>/dev/null; [ \$? -eq 77 ]"
+  chmod 600 "$TMP/safari-noperm/Cookies/Cookies.binarycookies"
+  mkdir -p "$TMP/safari-junk/Cookies"; printf 'cookXXXXXXXX' > "$TMP/safari-junk/Cookies/Cookies.binarycookies"
+  check "027: a damaged file is an error, not a crash" bash -c "SECRET_TEST_SAFARI='$TMP/safari-junk' '$CK' list x.test 2>/dev/null; [ \$? -eq 65 ]"
   check "027: cookie ls prints a table without values" bash -c "out=\$('$SECRET' cookie ls shop.test); [[ \$out == *NAME* && \$out == *sid* && \$out != *VAL-* ]]"
   s cookie pull shop.test sid --as CK_SID >/dev/null 2>&1
   check "027: pull stores the value" test "$(s get CK_SID)" = VAL-SID-1
-  check "027: pull sets the comment" test "$(s note CK_SID)" = "safari cookie shop.test sid"
-  check "027: pull sets the expiry from the cookie" bash -c "'$SECRET' ls -l | grep -qE '^CK_SID +20[0-9]{2}-[0-9]{2}-[0-9]{2} +safari cookie shop.test sid\$'"
+  check "027: pull sets the comment" test "$(s note CK_SID)" = "safari cookie shop.test sid, profile default"
+  check "027: pull sets the expiry from the cookie" bash -c "'$SECRET' ls -l | grep -qE '^CK_SID +20[0-9]{2}-[0-9]{2}-[0-9]{2} +safari cookie shop.test sid, profile default\$'"
   s cookie pull www.shop.test pref --as CK_PREF >/dev/null 2>&1
   check "027: pull of a cookie without a date sets no expiry" bash -c "'$SECRET' ls -l | grep -E '^CK_PREF ' | grep -vqE '20[0-9]{2}-[0-9]{2}-[0-9]{2}'"
   check "027: pull: several paths without --path fail, nothing stored" bash -c "! '$SECRET' cookie pull shop.test dup --as CK_DUP 2>/dev/null && ! '$SECRET' has CK_DUP"
@@ -736,7 +754,32 @@ else
   check "027: pull checks the secret name" bash -c "! '$SECRET' cookie pull shop.test sid --as 'bad name' 2>/dev/null"
   check "027: pull keeps the value out of the output" bash -c "out=\$('$SECRET' cookie pull shop.test sid --as CK_SID 2>&1); [[ \$out != *VAL-* ]]"
   check "027: no helper: unavailable, other commands work" bash -c "out=\$(SECRET_COOKIES_HELPER='$TMP/none' '$SECRET' cookie ls shop.test 2>&1); [ \$? -ne 0 ] && [[ \$out == *'not available'* ]] && '$SECRET' has CK_SID"
-  unset SECRET_TEST_COOKIES SECRET_COOKIES_HELPER
+  # 029: profiles
+  check "029: a cookie only in a profile is listed with its UUID" bash -c "'$SECRET' cookie ls shop.test | grep -E '^onlyp ' | grep -q '$UA\$'"
+  s cookie pull shop.test onlyp --as CK_ONLY >/dev/null 2>&1
+  check "029: pull of a profile-only cookie" test "$(s get CK_ONLY)" = VAL-ONLY-P
+  check "029: pull comment names the profile" test "$(s note CK_ONLY)" = "safari cookie shop.test onlyp, profile $UA"
+  s cookie pull shop.test shared --as CK_SH >/dev/null 2>&1
+  check "029: same cookie in two profiles: the latest expiry wins" test "$(s get CK_SH)" = VAL-SH-PROF
+  check "029: the expiry comes from the chosen cookie" bash -c "'$SECRET' ls -l | grep -E '^CK_SH ' | grep -q ' 2026-09-02 '"
+  s cookie pull shop.test shared --profile default --as CK_SHD >/dev/null 2>&1
+  check "029: --profile default reads the default profile" test "$(s get CK_SHD)" = VAL-SH-DEF
+  check "029: --profile default: expiry of the default cookie" bash -c "'$SECRET' ls -l | grep -E '^CK_SHD ' | grep -q ' 2026-06-01 '"
+  check "029: ls --profile shows one profile" bash -c "out=\$('$SECRET' cookie ls --profile $UA shop.test); [[ \$out == *onlyp* && \$out != *pref* ]]"
+  check "029: an unknown profile exits 1" bash -c "out=\$('$CK' --profile nope list shop.test 2>&1); [ \$? -eq 1 ] && [[ \$out == *'no Safari profile'* ]]"
+  check "029: pull with an unknown profile fails" bash -c "out=\$('$SECRET' cookie pull shop.test sid --profile nope --as CK_NP 2>&1); [ \$? -ne 0 ] && [[ \$out == *'no Safari profile'* ]] && ! '$SECRET' has CK_NP"
+  mkdir -p "$TMP/safari-def/Cookies"; cp "$CKF" "$TMP/safari-def/Cookies/"
+  check "029: no WebsiteDataStore: only the default profile" bash -c "SECRET_TEST_SAFARI='$TMP/safari-def' '$CK' value shop.test sid | grep -qx VAL-SID-1 && [ \$(SECRET_TEST_SAFARI='$TMP/safari-def' '$CK' path | wc -l) -eq 1 ]"
+  check "029: a profile dir without a cookie file is skipped" bash -c "'$CK' list shop.test >/dev/null 2>&1; [ \$? -eq 0 ] && '$CK' list shop.test | grep -q onlyp"
+  cp -R "$CKS" "$TMP/safari-bad"; mkdir -p "$TMP/safari-bad/WebKit/WebsiteDataStore/$UB/Cookies"; printf 'cookXXXXXXXX' > "$TMP/safari-bad/WebKit/WebsiteDataStore/$UB/Cookies/Cookies.binarycookies"
+  check "029: a damaged profile file exits 65 and names the file" bash -c "SECRET_TEST_SAFARI='$TMP/safari-bad' '$CK' list shop.test >/dev/null 2>'$TMP/bad.err'; rc=\$?; [ \$rc -eq 65 ] && grep -q '$UB' '$TMP/bad.err'"
+  check "029: two paths in two profiles exit 3 with both paths" bash -c "out=\$('$CK' value shop.test split 2>&1); [ \$? -eq 3 ] && [[ \$out == */x* && \$out == */y* && \$out != *VAL-* ]]"
+  check "029: pull of such a cookie stores nothing" bash -c "! '$SECRET' cookie pull shop.test split --as CK_SPLIT 2>/dev/null && ! '$SECRET' has CK_SPLIT"
+  check "029: path lists default and each UUID" bash -c "out=\$('$CK' path); printf '%s\n' \"\$out\" | grep -q '^default${TAB}' && printf '%s\n' \"\$out\" | grep -q '^$UA${TAB}' && printf '%s\n' \"\$out\" | grep -q '^$UB${TAB}'"
+  check "029: which prints profile and expiry" bash -c "out=\$('$CK' which shop.test shared); [ \"\$out\" = \"$UA${TAB}2026-09-02\" ]"
+  check "029: which and path show no value" bash -c "! { '$CK' which shop.test shared; '$CK' path; } | grep -q VAL-"
+  check "029: no secret comment holds a value" bash -c "! '$SECRET' ls -l | grep -q 'VAL-'"
+  unset SECRET_TEST_SAFARI SECRET_COOKIES_HELPER
 fi
 
 # --- 012: SecretBar. Разбор вывода команд (--selftest); бинарник без entitlements и без вызовов keychain
