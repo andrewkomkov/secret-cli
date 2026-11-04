@@ -176,6 +176,7 @@ secret cookie ls grafana.example.com                                   # име�
 secret cookie pull grafana.example.com grafana_session --as SHOP_GRAFANA_SESSION
 secret cookie pull example.com sid --path /app --as SHOP_SID           # если подходит несколько путей
 secret cookie pull example.com sid --profile PROFILE --as SHOP_SID     # только один профиль Safari
+secret cookie pull example.com --all --as SHOP_JAR                     # все persistent cookie домена, один jar
 ```
 
 `pull` пишет значение в хранилище через пайп, с комментарием `safari cookie DOMAIN NAME, profile PROFILE` и датой
@@ -191,6 +192,37 @@ secret cookie pull example.com sid --profile PROFILE --as SHOP_SID     # тол�
   memory) там нет. `sessionStorage` и `localStorage` — не cookie.
 - Только Safari. Хелпер cookie собирает `./install.sh` через `swiftc`; без него команда сообщает,
   что возможность недоступна, остальные команды работают.
+
+**Session cookie и cookie-jar**
+
+Некоторые сайты (ASP.NET: `ASP.NET_SessionId`; также `JSESSIONID`, `PHPSESSID`) держат сессию в
+HttpOnly cookie без срока. Safari не пишет её на диск, поэтому `pull NAME` её не достанет. Готовится
+расширение Safari: оно читает такие cookie из вашей настоящей сессии и передаёт их в
+`secret cookie import`; `import` уже сейчас принимает любой cookie-jar в формате Netscape из stdin.
+Все cookie домена сохраняются как один cookie-jar. `pull DOMAIN --all` сохраняет persistent cookie
+из файлов Safari.
+
+```sh
+secret cookie pull shop.example.com --all --as SHOP_SESSION     # persistent cookie, один jar
+some-exporter | secret cookie import --as SHOP_SESSION          # jar из stdin (его будет вызывать расширение Safari)
+secret cookie ls --jar SHOP_SESSION        # имя, домен, флаги, срок; значений нет
+secret run --mask --cookie-jar SHOP_SESSION --update -- \
+  curl -s -b "$SECRET_COOKIE_JAR" -c "$SECRET_COOKIE_JAR" https://shop.example.com/MainPage.aspx
+```
+
+- jar — файл cookie в формате Netscape (curl, wget, Python `http.cookiejar`; строки HttpOnly
+  начинаются с `#HttpOnly_`), в секрете лежит в base64. Комментарий: `cookie jar DOMAIN via safari
+  extension, N cookies, session-only: a,b`. Срок — самый ранний среди persistent cookie; если все
+  cookie session-only, срока нет.
+- `run --cookie-jar` пишет jar во временный файл (права 600), кладёт путь в `$SECRET_COOKIE_JAR` и
+  удаляет файл после команды, в том числе по сигналу. `--update` сохраняет jar обратно, если
+  сервер выдал новые cookie. `--mask` закрывает значение каждого cookie.
+- Хук Claude Code блокирует `cat`, `cp` и подобное по `$SECRET_COOKIE_JAR`.
+- `--mask` не маскирует значение короче 4 символов (иначе `302` станет `3***2`) и один раз печатает
+  `mask skipped for short value NAME`.
+- Для persistent cookie берите `pull`, для session cookie — расширение Safari (`import`). Если
+  `pull` или `cookie ls` видит известный session cookie, он печатает `session cookie not on disk:
+  capture it with the Safari extension (secret cookie import --as NAME)`.
 
 <details>
 <summary><b>Полный справочник</b></summary>
@@ -212,6 +244,10 @@ secret cookie pull example.com sid --profile PROFILE --as SHOP_SID     # тол�
 | `secret gh NAME [GH_NAME] [-R OWNER/REPO] [-e ENV] [-o ORG [-v VISIBILITY]]` | записать значение в GitHub Actions secret GH_NAME (по умолчанию NAME) через `gh secret set`. Каждую отправку человек подтверждает в окне. Флаги идут в `gh` без изменений, `-b` и `-f` запрещены |
 | `secret cookie ls [--profile ID] DOMAIN` | список cookie Safari для DOMAIN во всех профилях (cookie `.example.com` покрывает и поддомены): имя, путь, `Secure`/`HTTPOnly`, срок, профиль. Значений нет. Нужен Full Disk Access |
 | `secret cookie pull DOMAIN NAME --as SECRET [--path PATH] [--profile ID]` | записать значение cookie Safari в SECRET с комментарием `safari cookie DOMAIN NAME, profile PROFILE` и датой протухания cookie. `--path` выбирает одну из cookie с одним именем. При нескольких профилях берётся cookie с самой поздней датой; `--profile` выбирает профиль |
+| `secret cookie pull DOMAIN --all --as SECRET [--profile ID]` | записать все persistent cookie Safari для DOMAIN как один cookie-jar |
+| `secret cookie import --as SECRET [--domain D]` | прочитать cookie-jar в формате Netscape из stdin и записать как cookie-jar SECRET (base64); источник для session-only cookie — расширение Safari |
+| `secret cookie ls --jar SECRET` | список cookie в jar: имя, домен, флаги, срок; значений нет |
+| `secret run --cookie-jar SECRET [--update] -- CMD` | записать jar во временный файл (права 600), путь в `$SECRET_COOKIE_JAR`, удалить после CMD; `--update` сохраняет изменения |
 | `secret mv [-f] OLD NEW` | переименовать со значением, комментарием и сроком |
 | `secret rm NAME` | удалить |
 | `secret run [--mask\|--no-mask] [-e FILE]... [SPEC...] -- CMD` | запустить CMD с секретами в окружении. SPEC — `NAME` или `VAR=NAME`. Без SPEC и `-e` читает `./.env`. Под Claude Code (`CLAUDECODE`) вывод маскируется всегда, `--no-mask` не действует |
