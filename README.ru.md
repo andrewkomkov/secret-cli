@@ -207,8 +207,11 @@ secret cookie pull shop.example.com --all --as SHOP_SESSION     # persistent coo
 some-exporter | secret cookie import --as SHOP_SESSION          # jar из stdin (его будет вызывать расширение Safari)
 secret cookie ls --jar SHOP_SESSION        # имя, домен, флаги, срок; значений нет
 secret run --mask --cookie-jar SHOP_SESSION --update -- \
-  curl -s -b "$SECRET_COOKIE_JAR" -c "$SECRET_COOKIE_JAR" https://shop.example.com/MainPage.aspx
+  sh -c 'curl -s -b "$SECRET_COOKIE_JAR" -c "$SECRET_COOKIE_JAR" https://shop.example.com/MainPage.aspx'
 ```
+
+`$SECRET_COOKIE_JAR` задаётся в окружении команды, поэтому оберни команду в `sh -c '...'`:
+иначе shell, запускающий `secret run`, раскроет переменную в пустую строку слишком рано.
 
 - jar — файл cookie в формате Netscape (curl, wget, Python `http.cookiejar`; строки HttpOnly
   начинаются с `#HttpOnly_`), в секрете лежит в base64. Комментарий: `cookie jar DOMAIN via safari

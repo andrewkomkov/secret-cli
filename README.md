@@ -211,8 +211,11 @@ secret cookie pull shop.example.com --all --as SHOP_SESSION     # persistent coo
 some-exporter | secret cookie import --as SHOP_SESSION          # a jar on stdin (the Safari extension will call this)
 secret cookie ls --jar SHOP_SESSION        # name, domain, flags, expiry; no values
 secret run --mask --cookie-jar SHOP_SESSION --update -- \
-  curl -s -b "$SECRET_COOKIE_JAR" -c "$SECRET_COOKIE_JAR" https://shop.example.com/MainPage.aspx
+  sh -c 'curl -s -b "$SECRET_COOKIE_JAR" -c "$SECRET_COOKIE_JAR" https://shop.example.com/MainPage.aspx'
 ```
+
+`$SECRET_COOKIE_JAR` is set in the command's environment, so wrap the command in `sh -c '...'`:
+the shell that runs `secret run` would expand it to empty too early.
 
 - The jar is a Netscape cookie file (curl, wget, Python `http.cookiejar`; HttpOnly lines start with
   `#HttpOnly_`), stored as base64 in one secret. The comment is `cookie jar DOMAIN via safari

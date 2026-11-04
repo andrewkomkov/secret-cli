@@ -29,6 +29,6 @@
 
 ## Ручные проверки
 
-- [ ] T017 ручная: включить расширение в Safari, спарить токен, на eservices.rs.ge нажать кнопку → jar с `ASP.NET_SessionId` в секрете; дата — при выполнении
-- [ ] T018 ручная: `secret run --mask --cookie-jar RSGE_SESSION --update -- curl ... MainPage.aspx` даёт 200; дата — при выполнении
+- [x] T017 ручная, 2026-11-04: расширение включено, токен спарен, на eservices.rs.ge кнопка сохранила jar из 13 cookie, включая session-only `ASP.NET_SessionId`
+- [x] T018 ручная, 2026-11-04: `run --cookie-jar RSGE_SESSION --update` — curl шлёт `ASP.NET_SessionId`, авторизован: `/app/Notifications` даёт 200 (MainPage.aspx 302 ведёт в кабинет, не на Login)
 - [ ] T019 после приёмки: удалить мусорные секреты `RSGE_USER_TOKEN`, `RSGE_COOKIE_COMMITSTATUS`, `RSGE_COOKIE_ISEMP` (с подтверждением владельца)
