@@ -685,6 +685,7 @@ let sets: [String: [Row]] = [
         (".other.test", "sid", "/", "VAL-OTHER", 1, 0),
         (".shop.test", "shared", "/", "VAL-SH-DEF", 1, 802000000),
         (".shop.test", "split", "/x", "VAL-SPLIT-X", 1, 0),
+        (".shop.test", "JSESSIONID", "/", "VAL-JSID", 1, 802000000),
     ],
     "profile-a": [
         (".shop.test", "onlyp", "/", "VAL-ONLY-P", 1, 802000000),
@@ -779,8 +780,116 @@ else
   check "029: which prints profile and expiry" bash -c "out=\$('$CK' which shop.test shared); [ \"\$out\" = \"$UA${TAB}2026-09-02\" ]"
   check "029: which and path show no value" bash -c "! { '$CK' which shop.test shared; '$CK' path; } | grep -q VAL-"
   check "029: no secret comment holds a value" bash -c "! '$SECRET' ls -l | grep -q 'VAL-'"
+  # 030: pull --all gathers the persistent cookies of the domain into one jar
+  s cookie pull shop.test --all --as CK_JAR >/dev/null 2>&1
+  check "030: pull --all stores a jar of the persistent cookies" bash -c "j=\$('$SECRET' get CK_JAR | base64 -D); grep -q VAL-SID-1 <<<\"\$j\" && grep -q VAL-ONLY-P <<<\"\$j\" && ! grep -q -e VAL-PREF -e VAL-DUP <<<\"\$j\""
+  check "030: pull --all: the latest expiry wins, HttpOnly marked" bash -c "j=\$('$SECRET' get CK_JAR | base64 -D); grep -q VAL-SH-PROF <<<\"\$j\" && ! grep -q VAL-SH-DEF <<<\"\$j\" && grep -q '^#HttpOnly_.shop.test	TRUE	/	TRUE	[0-9]*	sid	VAL-SID-1\$' <<<\"\$j\""
+  check "030: pull --all: comment and expiry" bash -c "[ \"\$('$SECRET' note CK_JAR)\" = 'cookie jar shop.test via safari, 4 cookies' ] && '$SECRET' ls -l | grep -E '^CK_JAR ' | grep -qE ' 20[0-9]{2}-[0-9]{2}-[0-9]{2} '"
+  check "030: pull --all prints no value" bash -c "out=\$('$SECRET' cookie pull shop.test --all --as CK_JAR 2>&1); [[ \$out != *VAL-* ]]"
+  check "030: pull --all takes no NAME" bash -c "! '$SECRET' cookie pull shop.test sid --all --as CK_JAR2 2>/dev/null"
+  check "030: pull --all of an empty domain stores nothing" bash -c "! '$SECRET' cookie pull none.test --all --as CK_JAR3 2>/dev/null && ! '$SECRET' has CK_JAR3"
+  check "030: ls gives the hint for a known session cookie name" bash -c "'$SECRET' cookie ls shop.test 2>&1 >/dev/null | grep -qF 'session cookie not on disk: capture it with the Safari extension (secret cookie import --as NAME)'"
+  check "030: pull --all gives the same hint" bash -c "'$SECRET' cookie pull shop.test --all --as CK_JAR 2>&1 >/dev/null | grep -qF 'session cookie not on disk'"
   unset SECRET_TEST_SAFARI SECRET_COOKIES_HELPER
 fi
+
+# --- 030: cookie import, cookie jar, mask of short values
+{
+  T=$'\t'
+  FJAR="$TMP/login.jar"
+  printf '# Netscape HTTP Cookie File\n#HttpOnly_.shop.test\tTRUE\t/\tTRUE\t0\tASP.NET_SessionId\tSESSVAL-AAAA\n.shop.test\tTRUE\t/\tFALSE\t1893456000\tpref\tPREFVAL-BBBB\nshop.test\tFALSE\t/\tFALSE\t0\tisEmp\t0\n' > "$FJAR"
+  printf '#HttpOnly_.shop.test\tTRUE\t/\tTRUE\t0\tonly1\tONLYVAL-1111\nshop.test\tFALSE\t/\tFALSE\t0\tonly2\tONLYVAL-2222\n' > "$TMP/session.jar"
+  printf '.shop.test\tTRUE\t/\tFALSE\t0\t.ASPXAUTH\tAUTHVAL-3333\n' > "$TMP/aspx.jar"
+  : > "$TMP/empty.jar"
+  s cookie import --as LJ_A < "$FJAR" >/dev/null 2>"$TMP/login.err"
+  check "030: import stores a base64 jar (one line, decodes to the jar)" bash -c "v=\$('$SECRET' get LJ_A); [[ \$v != *\$'\n'* ]] && [ \"\$(printf '%s' \"\$v\" | base64 -D)\" = \"\$(cat '$FJAR')\" ]"
+  check "030: import comment names the cookies and the session-only ones" test "$(s note LJ_A)" = "cookie jar shop.test via safari extension, 3 cookies, session-only: ASP.NET_SessionId,isEmp"
+  check "030: import sets the earliest expiry of the persistent cookies" bash -c "'$SECRET' ls -l | grep -E '^LJ_A ' | grep -q ' 2030-01-01 '"
+  check "030: import prints no value" bash -c "! grep -q -e SESSVAL -e PREFVAL '$TMP/login.err'"
+  check "030: import comment holds no value" bash -c "! '$SECRET' ls -l | grep -q -e SESSVAL -e PREFVAL"
+  s cookie import --as LJ_D --domain other.test < "$FJAR" >/dev/null 2>&1
+  check "030: import --domain sets the domain in the comment" bash -c "[[ \$('$SECRET' note LJ_D) == 'cookie jar other.test via safari extension,'* ]]"
+  s cookie import --as LJ_S < "$TMP/session.jar" >/dev/null 2>&1
+  check "030: all cookies session-only: comment says session, no expiry" bash -c "[ \"\$('$SECRET' note LJ_S)\" = 'cookie jar shop.test via safari extension, 2 cookies, session' ] && ! '$SECRET' ls -l | grep -E '^LJ_S ' | grep -qE '20[0-9]{2}-'"
+  check "030: an empty jar stores nothing" bash -c "! '$SECRET' cookie import --as LJ_E < '$TMP/empty.jar' 2>/dev/null && ! '$SECRET' has LJ_E"
+  check "030: ASP.NET cookies without ASP.NET_SessionId: hint" bash -c "'$SECRET' cookie import --as LJ_H < '$TMP/aspx.jar' 2>&1 | grep -qF 'session cookie not on disk: capture it with the Safari extension'"
+  check "030: import needs --as" bash -c "! '$SECRET' cookie import < '$FJAR' 2>/dev/null"
+  check "030: import takes no value in argv (unknown argument)" bash -c "! '$SECRET' cookie import --as LJ_X SESSVAL-AAAA < '$FJAR' 2>/dev/null && ! '$SECRET' has LJ_X"
+
+  # ls --jar
+  check "030: ls --jar shows names, domains and flags" bash -c "out=\$('$SECRET' cookie ls --jar LJ_A); [[ \$out == *ASP.NET_SessionId* && \$out == *HttpOnly,Secure,session* && \$out == *2030-01-01* && \$out == *shop.test* ]]"
+  check "030: ls --jar prints no values" bash -c "! '$SECRET' cookie ls --jar LJ_A 2>&1 | grep -q -e SESSVAL -e PREFVAL"
+  check "030: ls --jar of a missing secret fails" bash -c "! '$SECRET' cookie ls --jar LJ_NOPE 2>/dev/null"
+
+  # run --cookie-jar: a fake command that looks at the jar file
+  cat > "$TMP/jarcmd.sh" <<'SH'
+#!/bin/bash
+printf '%s' "$SECRET_COOKIE_JAR" > "$JAR_PATH_OUT"
+stat -f %Lp "$SECRET_COOKIE_JAR" > "$JAR_MODE_OUT"
+cat "$SECRET_COOKIE_JAR"
+if [ -n "${JAR_APPEND:-}" ]; then printf '.shop.test\tTRUE\t/\tFALSE\t0\tnewc\tNEWVAL-CCCC\n' >> "$SECRET_COOKIE_JAR"; fi
+if [ -n "${JAR_REWRITE:-}" ]; then { echo '# rewritten header'; grep -v '^# Netscape' "$SECRET_COOKIE_JAR"; } > "$SECRET_COOKIE_JAR.t"; cat "$SECRET_COOKIE_JAR.t" > "$SECRET_COOKIE_JAR"; rm -f "$SECRET_COOKIE_JAR.t"; fi
+exit "${JAR_RC:-0}"
+SH
+  chmod +x "$TMP/jarcmd.sh"
+  export JAR_PATH_OUT="$TMP/jar.path" JAR_MODE_OUT="$TMP/jar.mode"
+  out="$(s run --cookie-jar LJ_A -- "$TMP/jarcmd.sh" 2>/dev/null)"
+  check "030: run --cookie-jar gives the cmd the jar in a file" bash -c "[[ '$out' == *SESSVAL-AAAA* && '$out' == *PREFVAL-BBBB* ]]"
+  check "030: the jar file has mode 600" test "$(cat "$TMP/jar.mode")" = 600
+  check "030: the jar file is deleted after cmd" bash -c "p=\$(cat '$TMP/jar.path'); [ -n \"\$p\" ] && [ ! -e \"\$p\" ]"
+  s run --cookie-jar LJ_A -- sh -c 'exit 5' >/dev/null 2>&1; rc=$?
+  check "030: the exit code of cmd is kept" test "$rc" = 5
+  ( s run --cookie-jar LJ_A -- sh -c 'printf %s "$SECRET_COOKIE_JAR" > "$JAR_PATH_OUT"; kill -TERM $PPID; sleep 5' >/dev/null 2>&1 ) 
+  check "030: the jar file is deleted on a signal" bash -c "p=\$(cat '$TMP/jar.path'); [ -n \"\$p\" ] && [ ! -e \"\$p\" ]"
+  out="$(s run --mask --cookie-jar LJ_A -- "$TMP/jarcmd.sh" 2>&1)"
+  check "030: mask covers each cookie value of the jar" bash -c "[[ '$out' != *SESSVAL-AAAA* && '$out' != *PREFVAL-BBBB* && '$out' == *'ASP.NET_SessionId'* ]]"
+  s run --mask --cookie-jar LJ_A --update -- "$TMP/jarcmd.sh" >/dev/null 2>&1
+  b64_before="$(s get LJ_A)"
+  check "030: --update without a change keeps the secret" test "$(s get LJ_A)" = "$b64_before"
+  JAR_REWRITE=1 s run --cookie-jar LJ_A --update -- "$TMP/jarcmd.sh" >/dev/null 2>&1
+  check "030: --update: only a changed header keeps the secret" test "$(s get LJ_A)" = "$b64_before"
+  JAR_APPEND=1 s run --mask --cookie-jar LJ_A --update -- "$TMP/jarcmd.sh" >/dev/null 2>&1
+  check "030: --update saves a changed jar back" bash -c "'$SECRET' get LJ_A | base64 -D | grep -q NEWVAL-CCCC"
+  check "030: --update: the saved jar is listed" bash -c "'$SECRET' cookie ls --jar LJ_A | grep -q '^newc '"
+  check "030: --update keeps the comment" test "$(s note LJ_A)" = "cookie jar shop.test via safari extension, 3 cookies, session-only: ASP.NET_SessionId,isEmp"
+  check "030: --update keeps the expiry" bash -c "'$SECRET' ls -l | grep -E '^LJ_A ' | grep -q ' 2030-01-01 '"
+  b64_u="$(s get LJ_A)"
+  s run --cookie-jar LJ_A -- true >/dev/null 2>&1
+  check "030: without --update the secret is not changed" test "$(s get LJ_A)" = "$b64_u"
+  check "030: --update needs --cookie-jar" bash -c "! '$SECRET' run --update LJ_A -- true 2>/dev/null"
+  check "030: --cookie-jar of a missing secret fails" bash -c "! '$SECRET' run --cookie-jar LJ_NOPE -- true 2>/dev/null"
+  check "030: --cookie-jar with a secret: both in one run" test "$(s run --mask --cookie-jar LJ_A T_B -- sh -c 'test -f "$SECRET_COOKIE_JAR" && echo "$T_B"' 2>/dev/null)" = '***'
+  check "030: run --cookie-jar is logged with the name" bash -c "tail -1 '$SECRET_LOG' | grep -q \$'\\trun\\t' && tail -1 '$SECRET_LOG' | grep -q LJ_A"
+  check "030: log has no cookie value" bash -c "! grep -q -e SESSVAL -e PREFVAL -e NEWVAL '$SECRET_LOG'"
+
+  # short values are not masked (FR-012)
+  printf '%s' 0 | s set SH_ZERO 2>/dev/null
+  printf '%s' 302 | s set SH_302 2>/dev/null
+  printf '%s' abc | s set SH_ABC 2>/dev/null
+  err="$TMP/short.err"
+  check "030: mask: a value of 1 character is not masked" test "$(s run --mask SH_ZERO -- sh -c 'echo "code 302 ok"' 2>"$err")" = 'code 302 ok'
+  check "030: mask: warning names the secret, once" bash -c "[ \"\$(grep -c 'mask skipped for short value SH_ZERO' '$err')\" = 1 ]"
+  check "030: mask: an all-digit value of 3 characters is not masked" test "$(s run --mask SH_302 -- sh -c 'echo "got 302"' 2>/dev/null)" = 'got 302'
+  check "030: mask: a value of 3 characters is not masked" test "$(s run --mask SH_ABC -- sh -c 'echo "abc"' 2>/dev/null)" = abc
+  check "030: mask: a value of 4 characters is masked" bash -c "printf %s abcd | '$SECRET' set SH_ABCD 2>/dev/null; [ \"\$('$SECRET' run --mask SH_ABCD -- sh -c 'echo xabcdx' 2>/dev/null)\" = 'x***x' ]"
+  check "030: the short cookie isEmp=0 is not masked, the warning names it" bash -c "out=\$('$SECRET' run --mask --cookie-jar LJ_A -- sh -c 'echo \"302 \$(grep -c isEmp \"\$SECRET_COOKIE_JAR\")\"' 2>'$TMP/iemp.err'); [ \"\$out\" = '302 1' ] && grep -q 'mask skipped for short value isEmp' '$TMP/iemp.err'"
+  check "030: without --mask no warning" bash -c "! '$SECRET' run SH_ZERO -- true 2>&1 | grep -q 'mask skipped'"
+  rm -f "$TMP/session.jar"
+
+  # hook: nobody reads the jar file
+  check "030: hook blocks: cat \$SECRET_COOKIE_JAR" bash -c "$(declare -f hook); HOOK='$HOOK'; hook 'cat \"\$SECRET_COOKIE_JAR\"'; [ \$? -eq 2 ]"
+  check "030: hook blocks: head \${SECRET_COOKIE_JAR}" bash -c "$(declare -f hook); HOOK='$HOOK'; hook 'head -3 \${SECRET_COOKIE_JAR}'; [ \$? -eq 2 ]"
+  check "030: hook blocks: cp to another file" bash -c "$(declare -f hook); HOOK='$HOOK'; hook 'cp \$SECRET_COOKIE_JAR /tmp/x'; [ \$? -eq 2 ]"
+  check "030: hook blocks: tail in secret run" bash -c "$(declare -f hook); HOOK='$HOOK'; hook 'secret run --cookie-jar J -- tail \$SECRET_COOKIE_JAR'; [ \$? -eq 2 ]"
+  check "030: hook blocks: less in sh -c" bash -c "$(declare -f hook); HOOK='$HOOK'; hook 'secret run --cookie-jar J -- sh -c \"less \$SECRET_COOKIE_JAR\"'; [ \$? -eq 2 ]"
+  check "030: hook blocks: a jar temp path" bash -c "$(declare -f hook); HOOK='$HOOK'; hook 'cat /tmp/secret-jar.AbC123'; [ \$? -eq 2 ]"
+  check "030: hook blocks: redirect from the jar" bash -c "$(declare -f hook); HOOK='$HOOK'; hook 'while read l; do echo \$l; done < \"\$SECRET_COOKIE_JAR\"'; [ \$? -eq 2 ]"
+  check "030: hook passes: curl -b \$SECRET_COOKIE_JAR" bash -c "$(declare -f hook); HOOK='$HOOK'; hook 'secret run --mask --cookie-jar J --update -- curl -s -b \"\$SECRET_COOKIE_JAR\" -c \"\$SECRET_COOKIE_JAR\" https://shop.test/'"
+  check "030: hook passes: curl with words like cat/cut in the URL" bash -c "$(declare -f hook); HOOK='$HOOK'; hook 'secret run --cookie-jar J -- curl -s -b \"\$SECRET_COOKIE_JAR\" https://shop.test/cat/cut | grep ok; echo SECRET_COOKIE_JAR'"
+  check "030: hook passes: grep of a file, jar used by curl" bash -c "$(declare -f hook); HOOK='$HOOK'; hook 'grep foo notes.txt; curl -b \"\$SECRET_COOKIE_JAR\" https://shop.test/'"
+  check "030: hook passes: cookie import and ls --jar" bash -c "$(declare -f hook); HOOK='$HOOK'; hook 'secret cookie import --as J < jar.txt && secret cookie ls --jar J'"
+  unset JAR_PATH_OUT JAR_MODE_OUT
+}
 
 # --- 012: SecretBar. Разбор вывода команд (--selftest); бинарник без entitlements и без вызовов keychain
 APP_SUM="$(cat "$ROOT"/app/SecretBar/*.swift "$ROOT/app/SecretBar.xcodeproj/project.pbxproj" "$ROOT"/app/SecretBar/Assets.xcassets/AppIcon.appiconset/Contents.json "$ROOT/app/SecretBar/Localizable.xcstrings" | shasum -a 256 | cut -d' ' -f1)"

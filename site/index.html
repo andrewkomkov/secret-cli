@@ -201,6 +201,11 @@ stored: SHOP_DB_PASSWORD</pre>
       <p><code>secret cookie pull DOMAIN NAME --as SECRET</code> moves a session cookie into the store. Reads all Safari profiles (<code>--profile ID</code> picks one). Needs Full Disk Access; in-memory cookies are not in Safari's file.</p>
     </article>
     <article class="card reveal tilt">
+      <div class="card-ico">&#127850;</div>
+      <h3>Session cookies and cookie jar</h3>
+      <p><code>secret cookie import --as SECRET</code> stores a cookie jar from stdin; a Safari extension (coming) will feed it with session-only cookies (<code>ASP.NET_SessionId</code>, <code>JSESSIONID</code>) from your real session. <code>secret run --cookie-jar SECRET --update</code> gives curl a temp jar in <code>$SECRET_COOKIE_JAR</code>, masked and deleted after the command.</p>
+    </article>
+    <article class="card reveal tilt">
       <div class="card-ico">.env</div>
       <h3>References, not values</h3>
       <p><code>TOKEN=secret:MY_TOKEN</code> in your <code>.env</code>. <code>secret import</code> moves an existing file; <code>secret check</code> shows what is missing.</p>

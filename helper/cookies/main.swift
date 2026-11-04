@@ -2,6 +2,7 @@
 //   [--profile ID] list DOMAIN               name<TAB>path<TAB>flags<TAB>expiry<TAB>profile
 //   [--profile ID] value DOMAIN NAME [PATH]  the value of one cookie on stdout
 //   [--profile ID] which DOMAIN NAME [PATH]  profile<TAB>expiry of the cookie that value gives
+//   [--profile ID] jar DOMAIN                persistent cookies of DOMAIN, all profiles, as a Netscape jar (values!)
 //   [--profile ID] path                      profile<TAB>file of each file that is read
 // Exit: 1 not found, 3 several match (paths on stderr), 64 usage, 65 bad file, 77 no access.
 import Foundation
@@ -212,8 +213,22 @@ case "value" where args.count == 3 || args.count == 4:
 case "which" where args.count == 3 || args.count == 4:
     let c = pick(allCookies(profile), args[1], args[2], args.count == 4 ? args[3] : nil)
     print([clean(c.profile), dateText(c)].joined(separator: "\t"))
+case "jar" where args.count == 2:
+    // one line per domain+name+path; the same cookie in several profiles: the latest expiry
+    var best: [String: Cookie] = [:]
+    var order: [String] = []
+    for c in allCookies(profile) where matches(c, args[1]) && c.expiry != nil {
+        let k = [c.domain, c.name, c.path].joined(separator: "\t")
+        if let o = best[k] { if (c.expiry ?? 0) > (o.expiry ?? 0) { best[k] = c } } else { best[k] = c; order.append(k) }
+    }
+    print("# Netscape HTTP Cookie File")
+    for k in order {
+        let c = best[k]!
+        print([(c.httpOnly ? "#HttpOnly_" : "") + clean(c.domain), c.domain.hasPrefix(".") ? "TRUE" : "FALSE", clean(c.path),
+               c.secure ? "TRUE" : "FALSE", String(Int(c.expiry ?? 0)), clean(c.name), clean(c.value)].joined(separator: "\t"))
+    }
 case "path" where args.count == 1:
     for s in selectedStores(profile) { print(s.profile + "\t" + s.path) }
 default:
-    fail("usage: secret-cookies [--profile ID] list DOMAIN | value DOMAIN NAME [PATH] | which DOMAIN NAME [PATH] | path", 64)
+    fail("usage: secret-cookies [--profile ID] list DOMAIN | value DOMAIN NAME [PATH] | which DOMAIN NAME [PATH] | jar DOMAIN | path", 64)
 }

@@ -48,6 +48,8 @@ my @rules = (
   [ qr/$at\bsecret\s+run\b$seg\s--\s+(?:set|declare\s+-p|export\s+-p)\s*(?:$|[;&|>])/, 'set inside secret run prints the values' ],
   [ qr/$at\bsecret\s+touchid\s+(?:off|grace|repair)\b/, 'only the user changes the Touch ID settings' ],
   [ qr/touchid-ok\b/, 'only the user changes the Touch ID settings' ],
+  [ qr/(?:$at|--\s+|\s-c\s+["']\s*)(?:cat|less|more|head|tail|bat|nl|strings|cp|mv|xxd|od|hexdump|base64|grep|egrep|rg|awk|sed|perl|python3?|tee|dd|sort|uniq|cut|paste|tr)\s+(?:-\S+\s+)*$seg(?:\$\{?SECRET_COOKIE_JAR\b|[^\s"']*secret-jar\.)/, 'the cookie jar file holds the cookie values' ],
+  [ qr/<\s*["']?(?:\$\{?SECRET_COOKIE_JAR\b|[^\s"']*secret-jar\.)/, 'the cookie jar file holds the cookie values' ],
   [ qr/\bSECRET_(?:AUTH_HELPER|CONFIG|AUTH_STAMP|VAULT_HELPER|STORE_MODE|GH|CONFIRM|TEST_[A-Z_]+)=/, 'these variables are for tests only' ],
 );
 for my $r (@rules) { block($r->[1]) if $cmd =~ $r->[0]; }
