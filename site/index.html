@@ -191,6 +191,11 @@ stored: SHOP_DB_PASSWORD</pre>
       <div class="blocked"><code>cat .env</code><span>Blocked by secret-cli</span></div>
     </article>
     <article class="card reveal tilt">
+      <div class="card-ico">&#9202;</div>
+      <h3>Lease for an agent</h3>
+      <p><code>secret lease --for 8h NAME…</code> holds the named secrets for up to 24 hours after one Touch ID that names them. They stay readable while the screen is locked or the Mac sleeps; any other name fails at once with <code>not leased</code>. <code>secret lease status</code> lists the names and the end; <code>secret lease --revoke</code> or <code>secret lock</code> ends it.</p>
+    </article>
+    <article class="card reveal tilt">
       <div class="card-ico">⇪</div>
       <h3>GitHub Actions</h3>
       <p><code>secret gh NAME -R owner/repo</code> pushes a value to <code>gh secret set</code> through stdin, after you confirm it.</p>

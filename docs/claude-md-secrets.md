@@ -60,6 +60,17 @@ use the name. Do NOT guess a name.
 - To move a plain `.env` into the keychain, run `secret import -p PROJECT_ FILE`. With `-k`, the
   command stores the values and does not change the file.
 
+## Work while the owner is away
+
+- A locked screen ends the Touch ID grace, and nobody can answer a Touch ID window on a locked
+  Mac. Before long work without the owner, ask for a lease of the names that the work needs:
+  `secret lease --for 8h NAME...` (or `secret lease -e FILE`). The owner confirms with Touch ID. A
+  lease holds only the names you list, for 24 hours at most. Lease only the names that you need.
+- `secret lease status` shows the leased names and the end of each. `secret lease --revoke` ends
+  all leases. Revoke the lease when the work is done.
+- If a command shows `not leased: NAME`, the screen is locked and NAME is not in the lease.
+  Stop. Then tell the owner. Do NOT try to go around it.
+
 ## How to put a secret into GitHub Actions
 
 - Run `secret gh NAME [GH_NAME] -R OWNER/REPO`. Add `-e ENV` for an environment, or

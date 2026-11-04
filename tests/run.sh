@@ -173,9 +173,15 @@ for c in 'secret run --mask X -- psql' \
          'secret run X -- env FOO=1 make' \
          'echo "use secret get with care"' \
          'git commit -m "docs: block secret get in the hook"' \
-         'grep -n "cat .env" README.md'; do
+         'grep -n "cat .env" README.md' \
+         'secret lease --for 6h SHOP_API_KEY SHOP_DB_PASSWORD' \
+         'secret lease -e .env' \
+         'secret lease status' \
+         'secret lease --revoke'; do
   check "hook passes: $c" bash -c "$(declare -f hook); HOOK='$HOOK'; hook '$c'"
 done
+check "026: lease needs the secure enclave store" bash -c "out=\$('$SECRET' lease T_B 2>&1); [ \$? -eq 1 ] && [[ \$out == *'lease needs the secure enclave store'* ]]"
+check "026: lease status and --revoke need the secure enclave store" bash -c "! '$SECRET' lease status 2>/dev/null && ! '$SECRET' lease --revoke 2>/dev/null"
 check "hook passes input without a command" bash -c "echo '{}' | '$HOOK'"
 # --- 002: copy (буфер обмена подменён файлом)
 export SECRET_PBCOPY="cat > '$TMP/clip'" SECRET_PBPASTE="cat '$TMP/clip'"
@@ -613,6 +619,118 @@ else
   echo second-value | sv set V_B 2>/dev/null
   sv note V_A 'Пароль «vault»' 2>/dev/null
   check "011: only the agent opens values" bash -c "! grep -v '^agent ' '$SECRET_TEST_VALUE_LOG'"
+
+  # --- 026: agent lease (a locked screen and a sleep end the grace, not the lease)
+  echo x-value | sv set V_X 2>/dev/null
+  sv lock 2>/dev/null
+  n="$(vcalls)"
+  out="$(sv lease --for 6h V_B V_C 2>&1)"
+  check "026: lease prints the end and the names" bash -c "[[ '$out' =~ ^leased\ until\ [0-9]{4}-[0-9]{2}-[0-9]{2}\ [0-9]{2}:[0-9]{2}:\ V_B,\ V_C\$ ]]"
+  check "026: lease asks Touch ID once and names the names and the term" bash -c "[ \$(wc -l < '$SECRET_TEST_AUTH_LOG') -eq $((n + 1)) ] && tail -1 '$SECRET_TEST_AUTH_LOG' | grep -qx 'lease V_B, V_C for 6h'"
+  out="$(sv lease status 2>&1)"
+  check "026: lease status shows names and the end, no values" bash -c "[ \$(grep -cE '^V_[BC]	[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}\$' <<< '$out') -eq 2 ] && [[ '$out' != *second-value* ]] && [[ '$out' != *third-value* ]]"
+  n="$(vcalls)"
+  check "026: a leased name needs no Touch ID with an open screen" bash -c "$SV; [ \"\$(sv run V_B -- sh -c 'printf %s \"\$V_B\"')\" = second-value ] && [ \$(wc -l < '$SECRET_TEST_AUTH_LOG') -eq $n ]"
+  "$TV" test-lock
+  check "026: SC-001 a leased name is read after a screen lock without Touch ID" bash -c "$SV; [ \"\$(sv run V_C -- sh -c 'printf %s \"\$V_C\"')\" = third-value ] && [ \$(wc -l < '$SECRET_TEST_AUTH_LOG') -eq $n ]"
+  t0="$(perl -MTime::HiRes=time -e 'printf "%.3f", time')"
+  out="$(sv run V_A -- true 2>&1)"; rc=$?
+  t1="$(perl -MTime::HiRes=time -e 'printf "%.3f", time')"
+  check "026: SC-001 a name outside the lease fails at once with not leased" bash -c "[ $rc -ne 0 ] && [[ '$out' == *'not leased: V_A'* ]] && [ \$(wc -l < '$SECRET_TEST_AUTH_LOG') -eq $n ] && perl -e 'exit(($t1 - $t0) < 1 ? 0 : 1)'"
+  out="$(sv run V_A V_X V_B -- true 2>&1)"
+  check "026: not leased names all of them, and only them" bash -c "[[ '$out' == *'not leased: V_A, V_X'* ]] && [[ '$out' != *V_B,* ]]"
+  out="$(sv get V_A 2>&1)"
+  check "026: get outside the lease on a locked screen" bash -c "[[ '$out' == *'not leased: V_A'* ]] && [[ '$out' != *vault-value* ]]"
+  check "026: lease on a locked screen is refused without Touch ID" bash -c "$SV; out=\$(sv lease V_A 2>&1); [ \$? -ne 0 ] && [[ \$out == *'the screen is locked'* ]] && [ \$(wc -l < '$SECRET_TEST_AUTH_LOG') -eq $n ]"
+  "$TV" test-sleep
+  check "026: SC-001 a sleep keeps the lease" bash -c "$SV; [ \"\$(sv run V_B -- sh -c 'printf %s \"\$V_B\"')\" = second-value ] && [ \$(wc -l < '$SECRET_TEST_AUTH_LOG') -eq $n ]"
+  check "026: the status line of the helper has the lease" bash -c "'$TV' status | grep -qE '^ok off grace=[0-9]+ lease=2:[0-9]+\$'"
+  "$TV" test-unlock
+  check "026: a name outside the lease asks Touch ID again with an open screen" bash -c "$SV; sv get V_A >/dev/null && [ \$(wc -l < '$SECRET_TEST_AUTH_LOG') -eq $((n + 1)) ]"
+  # the grace of a name outside the lease still ends at a screen lock
+  n="$(vcalls)"
+  sv get V_A >/dev/null; sv get V_A >/dev/null
+  check "026: the grace serves the second request" test "$(vcalls)" = "$n"
+  "$TV" test-lock; "$TV" test-unlock
+  sv get V_A >/dev/null
+  check "026: a screen lock still ends the grace for a name outside the lease" test "$(vcalls)" = "$((n + 1))"
+  "$TV" test-sleep; sv get V_A >/dev/null
+  check "026: a sleep still ends the grace for a name outside the lease" test "$(vcalls)" = "$((n + 2))"
+  check "026: the leased name is still served after the grace ended" bash -c "$SV; [ \"\$(sv run V_B -- sh -c 'printf %s \"\$V_B\"')\" = second-value ] && [ \$(wc -l < '$SECRET_TEST_AUTH_LOG') -eq $((n + 2)) ]"
+  # a new lease needs its own Touch ID, the grace does not stand in for it
+  sv get V_A >/dev/null; n="$(vcalls)"
+  sv lease V_X >/dev/null 2>&1
+  check "026: a lease asks a new Touch ID in an active grace" test "$(vcalls)" = "$((n + 1))"
+  check "026: leases add up" bash -c "$SV; [ \"\$(sv lease status | cut -f1 | tr '\n' ' ')\" = 'V_B V_C V_X ' ]"
+  # the later end stays for a name that is leased again
+  e1="$("$TV" lease-status | awk -F'\t' '$1 == "V_B" { print $2 }')"
+  sv lease --for 1h V_B >/dev/null 2>&1
+  e2="$("$TV" lease-status | awk -F'\t' '$1 == "V_B" { print $2 }')"
+  check "026: the later end stays for a repeated name" bash -c "[ $((e2 - e1)) -ge -1 ] && [ $((e2 - e1)) -le 1 ] && [ $((e1 - $(date +%s))) -gt 20000 ]"
+  # logs
+  check "026: the log marks the reads from a lease" bash -c "awk -F'\t' '\$2 == \"run\" && \$5 ~ /lease=V_B/ { f = 1 } END { exit !f }' '$SECRET_LOG'"
+  check "026: the log has the lease request" bash -c "awk -F'\t' '\$2 == \"lease\" && \$4 ~ /V_B V_C/ { f = 1 } END { exit !f }' '$SECRET_LOG'"
+  check "026: the log marks get from a lease" bash -c "$SV; sv get V_B >/dev/null; awk -F'\t' '\$2 == \"get\" && \$4 == \"V_B\" && \$5 ~ /lease=V_B/ { f = 1 } END { exit !f }' '$SECRET_LOG'"
+  check "026: the log has no values" bash -c "! grep -q -e second-value -e third-value '$SECRET_LOG'"
+  # revoke
+  "$TV" test-lock
+  sv lease --revoke 2>"$TMP/revoke-err"
+  check "026: SC-003 revoke says so" grep -qx 'lease revoked' "$TMP/revoke-err"
+  check "026: SC-003 revoke ends the lease" bash -c "$SV; out=\$(sv run V_B -- true 2>&1); [ \$? -ne 0 ] && [[ \$out == *'not leased: V_B'* ]]"
+  check "026: the log has the revoke" bash -c "awk -F'\t' '\$2 == \"lease-revoke\" { f = 1 } END { exit !f }' '$SECRET_LOG'"
+  check "026: lease status after revoke" bash -c "$SV; out=\$(sv lease status 2>&1); [ \$? -eq 0 ] && [ \"\$out\" = 'no lease' ]"
+  "$TV" test-unlock
+  # lock ends the lease, also with an open screen
+  sv lease V_B >/dev/null 2>&1
+  sv lock 2>/dev/null
+  check "026: SC-003 lock ends the lease" bash -c "$SV; [ \"\$(sv lease status 2>&1)\" = 'no lease' ]"
+  # set and rm take the name out of the lease, the others stay
+  sv lease V_B V_C V_X >/dev/null 2>&1
+  "$TV" test-lock
+  echo changed-value | sv set V_B 2>/dev/null
+  check "026: SC-003 set takes the name out of the lease" bash -c "$SV; out=\$(sv run V_B -- true 2>&1); [ \$? -ne 0 ] && [[ \$out == *'not leased: V_B'* ]] && [ \"\$(sv run V_C -- sh -c 'printf %s \"\$V_C\"')\" = third-value ]"
+  sv rm V_X 2>/dev/null
+  check "026: SC-003 rm takes the name out of the lease" bash -c "$SV; ! sv run V_X -- true 2>/dev/null && [ \"\$(sv lease status | cut -f1)\" = V_C ]"
+  "$TV" test-unlock
+  echo second-value | sv set V_B 2>/dev/null
+  sv lock 2>/dev/null
+  # the limit of the term: continuous requests do not extend it, a sleep does not stop the clock
+  export SECRET_TEST_MAX_LEASE=3
+  sv lease --for 5h V_B >/dev/null 2>&1
+  unset SECRET_TEST_MAX_LEASE
+  "$TV" test-lock
+  r=""
+  for i in 1 2 3 4 5; do
+    if sv run V_B -- true >/dev/null 2>&1; then r="${r}y"; else r="${r}n"; fi
+    sleep 1
+  done
+  check "026: SC-002 the term ends the lease under continuous requests" bash -c "[[ '$r' == y*nn ]] && [[ '$r' != *ny* ]]"
+  sv lock 2>/dev/null
+  # refused Touch ID, bad calls
+  echo deny > "$SECRET_TEST_AUTH"; n="$(vcalls)"
+  out="$(sv lease V_B 2>&1)"; rc=$?
+  check "026: SC-004 a refused Touch ID gives no lease" bash -c "[ $rc -ne 0 ] && [ \"\$($SV; sv lease status 2>&1)\" = 'no lease' ]"
+  echo allow > "$SECRET_TEST_AUTH"; n="$(vcalls)"
+  out="$(sv lease --for 25h V_B 2>&1)"; rc=$?
+  check "026: SC-004 25h is refused before the dialog" bash -c "[ $rc -eq 64 ] && [[ '$out' == *'--for must be 1m..24h'* ]] && [ \"\$(cat '$SECRET_TEST_AUTH_LOG' | wc -l | tr -d ' ')\" = $n ]"
+  check "026: --for 1441m and a bad form are refused" bash -c "$SV; ! sv lease --for 1441m V_B 2>/dev/null && ! sv lease --for 2d V_B 2>/dev/null && ! sv lease --for 0m V_B 2>/dev/null"
+  check "026: --for 24h is accepted" bash -c "$SV; sv lease --for 24h V_B 2>/dev/null && sv lease --revoke 2>/dev/null"
+  n="$(vcalls)"
+  printf 'PLAIN=1\n# C=secret:V_B\n' > "$TMP/noref.env"
+  out="$(sv lease -e "$TMP/noref.env" 2>&1)"; rc=$?
+  check "026: SC-004 an env file without references is refused before the dialog" bash -c "[ $rc -eq 64 ] && [[ '$out' == *'lease needs NAME'* ]] && [ \"\$(cat '$SECRET_TEST_AUTH_LOG' | wc -l | tr -d ' ')\" = $n ]"
+  check "026: lease without names is refused" bash -c "$SV; ! sv lease 2>/dev/null"
+  out="$(sv lease V_NOPE 2>&1)"; rc=$?
+  check "026: a missing name is refused before the dialog" bash -c "[ $rc -eq 3 ] && [[ '$out' == *'not found: V_NOPE'* ]] && [ \"\$(cat '$SECRET_TEST_AUTH_LOG' | wc -l | tr -d ' ')\" = $n ]"
+  printf 'B=secret:V_B\nC=secret:V_C\nB2=secret:V_B\n' > "$TMP/refs.env"
+  check "026: lease -e takes the names of the references" bash -c "$SV; sv lease -e '$TMP/refs.env' 2>/dev/null && [ \"\$(sv lease status | cut -f1 | tr '\n' ' ')\" = 'V_B V_C ' ]"
+  check "026: SECRET_NO_DIALOG=1 gives no lease" bash -c "$SV; sv lock 2>/dev/null; out=\$(SECRET_NO_DIALOG=1 SECRET_KEYCHAIN='$KC5' SECRET_VAULT_HELPER='$TV' SECRET_STORE_MODE='$TMP/v-mode' '$SECRET' lease V_B 2>&1); [ \$? -eq 5 ] && [[ \$out == *SECRET_NO_DIALOG* ]] && [ \"\$(sv lease status 2>&1)\" = 'no lease' ]"
+  for i in 1 2 3 4 5; do echo l-value | sv set V_L$i 2>/dev/null; done
+  sv lease --for 1h V_B V_C V_L1 V_L2 V_L3 V_L4 V_L5 >/dev/null 2>&1
+  check "026: a long list in the dialog shows five names and the rest as a count" bash -c "tail -1 '$SECRET_TEST_AUTH_LOG' | grep -qx 'lease V_B, V_C, V_L1, V_L2, V_L3 and 2 more for 1h'"
+  for i in 1 2 3 4 5; do sv rm V_L$i 2>/dev/null; done
+  sv lock 2>/dev/null
+  echo allow > "$SECRET_TEST_AUTH"
 
   out="$(echo "$PW" | sv export -f --pass-stdin "$TMP/v.enc" 2>&1)"
   check "017: export" bash -c "grep -q 'exported: 3 secrets' <<< '$out'"

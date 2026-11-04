@@ -56,6 +56,7 @@ func usage() -> Never {
         usage: secret-vault list | has NAME | read REASON NAME... | write | attrs REASON NAME COMMENT EXPIRY
                delete NAME... | policy init [N] | policy show | policy grace N | lock | grace-status
                ping | kind | clip | status | repair
+               lease REASON SECONDS NAME... | lease-status | lease-revoke
         """, 64)
 }
 
@@ -206,23 +207,38 @@ func uptime() -> TimeInterval { TimeInterval(clock_gettime_nsec_np(CLOCK_UPTIME_
 #if SECRET_TEST
 let maxSession = TimeInterval(testEnv["SECRET_TEST_MAX_GRACE"].flatMap { Int($0) } ?? 8 * 3600)
 let contextFresh = TimeInterval(testEnv["SECRET_TEST_CONTEXT_FRESH"].flatMap { Int($0) } ?? 480)
-let testLockNotification = Notification.Name("secretcli.test.lock." + account)
+// The lease limit (026): 24 hours; the test build takes it from the environment.
+let maxLease = TimeInterval(testEnv["SECRET_TEST_MAX_LEASE"].flatMap { Int($0) } ?? 24 * 3600)
+// Test build only: the screen lock is a flag of the agent (test-lock, test-unlock).
+var testScreenLocked = false
 #else
+// The lease limit (026): 24 hours.
+let maxLease: TimeInterval = 24 * 3600
 let maxSession: TimeInterval = 8 * 3600
 // The keychain takes a confirmed context for about 10 minutes (research 010 R11).
 let contextFresh: TimeInterval = 480
 #endif
 
 func screenLocked() -> Bool {
+    #if SECRET_TEST
+    return testScreenLocked
+    #else
     guard let d = CGSessionCopyCurrentDictionary() as? [String: Any] else { return false }
     return (d["CGSSessionScreenIsLocked"] as? Bool) ?? false
+    #endif
 }
 
 // Grace is sliding (010): each served request moves the end to now + idle, but not past
 // maxSession from the Touch ID. A locked screen, a sleep or `lock` ends it at once.
 // The keychain takes a context for about 10 minutes only, so the agent keeps the values it read
 // (R11). A value goes out of memory when its item has a new persistent reference.
+// A lease (026): an explicit set of names, held for up to 24 hours. It keeps the values in memory
+// and survives a locked screen and a sleep, which end only the grace. The end is on the monotonic
+// clock, which counts the sleep of the Mac. A value goes out when its item has a new reference.
+struct Lease { var ref: Data; var value: Data; var end: TimeInterval }
+
 final class Agent {
+    var leases = [String: Lease]()
     var context: LAContext?
     var contextAt: TimeInterval = 0
     var cache = [String: (ref: Data, value: Data)]()
@@ -316,41 +332,155 @@ final class Agent {
             return ("ok", true)
         case "status":
             let now = monotonic()
-            guard context != nil, now < deadline else { return ("ok\toff", false) }
-            return ("ok\tactive\t\(Int(deadline - now))\t\(Int(idle))\t\(Int(confirmedAt + maxSession - now))", false)
+            expireLeases()
+            let l = leases.isEmpty ? "" : "\tlease=\(leases.count):\(epoch(leases.values.map { $0.end }.min() ?? now))"
+            guard context != nil, now < deadline else { return ("ok\toff" + l, false) }
+            return ("ok\tactive\t\(Int(deadline - now))\t\(Int(idle))\t\(Int(confirmedAt + maxSession - now))" + l, false)
         case "read" where f.count == 4:
             guard let reason = unhexText(f[2]) else { return ("err\t64\tbad request", false) }
-            var names = [String]()
-            for h in f[3].split(separator: ",") {
-                guard let n = unhexText(h), !n.hasPrefix("__secret-cli.") else { return ("err\t64\tbad request", false) }
-                names.append(n)
+            guard let names = parseNames(f[3]) else { return ("err\t64\tbad request", false) }
+            let nodialog = f[1] == "1"
+            // leased names first: same reference, not expired (R4)
+            expireLeases()
+            if !leases.isEmpty {
+                do { try verifyLeases() } catch { return ("err\t1\t\(vaultMessage(error))", false) }
             }
-            if case .failure(let e) = authorized(reason, f[1] == "1") { return ("err\t\(e.code)\t\(e.message)", false) }
-            var values = [String]()
+            var missing = [String]()
+            for n in names where leases[n] == nil && !missing.contains(n) { missing.append(n) }
+            // a locked screen: nobody sees a Touch ID window, so names outside the lease fail at once
+            if !missing.isEmpty && screenLocked() { return ("err\t6\tnot leased: " + missing.joined(separator: ", "), false) }
+            if !missing.isEmpty, case .failure(let e) = authorized(reason, nodialog) { return ("err\t\(e.code)\t\(e.message)", false) }
+            var values = [String](), sources = [String]()
             for n in names {
-                switch value(n, reason, f[1] == "1") {
+                if let l = leases[n] {
+                    values.append(hex(l.value)); sources.append("l")
+                    continue
+                }
+                switch value(n, reason, nodialog) {
                 case .failure(let e): return ("err\t\(e.code)\t\(e.message)", false)
-                case .success(let v): values.append(hex(v))
+                case .success(let v): values.append(hex(v)); sources.append("g")
                 }
             }
-            extend()
-            return ("ok\t" + values.joined(separator: ","), false)
+            if !missing.isEmpty { extend() }
+            return ("ok\t" + values.joined(separator: ",") + "\t" + sources.joined(separator: ","), false)
+        case "lease" where f.count == 5:
+            return lease(nodialog: f[1] == "1", reasonHex: f[2], seconds: f[3], namesHex: f[4])
+        case "lease-status":
+            expireLeases()
+            do { try verifyLeases() } catch { return ("err\t1\t\(vaultMessage(error))", false) }
+            return ("ok\t" + leases.sorted { $0.key.utf8.lexicographicallyPrecedes($1.key.utf8) }
+                .map { "\(hex($0.key)):\(epoch($0.value.end))" }.joined(separator: ","), false)
+        case "revoke":
+            leases.removeAll()
+            return ("ok", false)
+        #if SECRET_TEST
+        case "test-lock":
+            testScreenLocked = true
+            dropGrace()
+            expireLeases()
+            return ("ok", leases.isEmpty)
+        case "test-unlock":
+            testScreenLocked = false
+            return ("ok", false)
+        case "test-sleep":
+            dropGrace()
+            expireLeases()
+            return ("ok", leases.isEmpty)
+        #endif
         default:
             return ("err\t64\tunknown request", false)
         }
     }
 
+    func parseNames(_ list: Substring) -> [String]? {
+        var names = [String]()
+        for h in list.split(separator: ",") {
+            guard let n = unhexText(h), !n.hasPrefix("__secret-cli.") else { return nil }
+            names.append(n)
+        }
+        return names
+    }
+
+    func epoch(_ end: TimeInterval) -> Int { Int(Date().timeIntervalSince1970 + (end - monotonic())) }
+
+    func expireLeases() {
+        let now = monotonic()
+        leases = leases.filter { $0.value.end > now }
+    }
+
+    // A leased name leaves the lease when its item has another reference or is gone (R4).
+    func verifyLeases() throws {
+        guard !leases.isEmpty else { return }
+        let refs = Dictionary((try readDoc()?.0.items ?? []).map { ($0.n, Data($0.r.utf8)) }, uniquingKeysWith: { $1 })
+        leases = leases.filter { refs[$0.key] == $0.value.ref }
+    }
+
+    // A new lease (026): always a new Touch ID, grace does not stand in for it. The values are
+    // read now, with the new context, and kept in memory until the end.
+    func lease(nodialog: Bool, reasonHex: Substring, seconds: Substring, namesHex: Substring) -> (String, Bool) {
+        guard let reason = unhexText(reasonHex), let names = parseNames(namesHex), !names.isEmpty else { return ("err\t64\tbad request", false) }
+        guard let secs = Int(seconds), secs >= 1, TimeInterval(secs) <= 24 * 3600 else { return ("err\t64\tlease: --for must be 1m..24h", false) }
+        if screenLocked() { return ("err\t6\tlease needs Touch ID: the screen is locked", false) }
+        if nodialog { return ("err\t5\tTouch ID confirmation needed, SECRET_NO_DIALOG is set", false) }
+        do {
+            let before = try readDoc()
+            for n in names where before?.0.items.contains(where: { $0.n == n }) != true { return ("err\t3\tnot found: \(n)", false) }
+        } catch { return ("err\t1\t\(vaultMessage(error))", false) }
+        let c: LAContext
+        switch confirmedContext(reason) {
+        case .failure(let e): return ("err\t\(e.code)\t\(e.message)", false)
+        case .success(let x): c = x
+        }
+        defer { c.invalidate() }
+        let end = monotonic() + min(TimeInterval(secs), maxLease)
+        var fresh = [String: Lease]()
+        do {
+            guard let (d, k, _) = try readDoc() else { return ("err\t3\tthe store is empty", false) }
+            for n in names {
+                guard let item = d.items.first(where: { $0.n == n }) else { return ("err\t3\tnot found: \(n)", false) }
+                valueTouch("read " + n)
+                fresh[n] = Lease(ref: Data(item.r.utf8), value: try unseal(item.v, n, k.se, c), end: end)
+            }
+        } catch { return ("err\t1\tcannot read the secrets: \(error)", false) }
+        expireLeases()
+        for (n, l) in fresh {
+            // a name that is leased already keeps the later end
+            var x = l
+            if let old = leases[n], old.end > x.end { x.end = old.end }
+            leases[n] = x
+        }
+        eventLog("lease: \(names.count) names, \(Int(end - monotonic()))s")
+        return ("ok\t\(epoch(end))", false)
+    }
+
+    // The grace ends, the leases stay: a locked screen, a sleep, the end of the idle time.
+    func dropGrace() {
+        context?.invalidate()
+        context = nil
+        cache.removeAll()
+        startedAt = monotonic()
+    }
+
+    // The agent goes on only for a lease.
+    func endGrace() {
+        dropGrace()
+        expireLeases()
+        if leases.isEmpty { stop() }
+    }
+
     // End of grace: the deadline passed, the Mac slept, or the screen is locked. Without a
-    // context the agent ends after idleSeconds.
+    // context and without a lease the agent ends after idleSeconds.
     func check() {
         let mono = monotonic(), up = uptime()
         let slept = (mono - lastMono) - (up - lastUptime) > 2
         lastMono = mono
         lastUptime = up
-        if slept || screenLocked() { stop() }
+        expireLeases()
+        // nothing to end without a grace context: the agent then ends after idleSeconds (or lives on for a lease)
+        if (slept || screenLocked()) && context != nil { endGrace() }
         if context != nil {
-            if mono >= deadline { stop() }
-        } else if mono - startedAt >= idleSeconds {
+            if mono >= deadline { endGrace() }
+        } else if leases.isEmpty && mono - startedAt >= idleSeconds {
             stop()
         }
     }
@@ -392,10 +522,7 @@ final class Agent {
         t.resume()
         timer = t
         let center = DistributedNotificationCenter.default()
-        center.addObserver(forName: Notification.Name("com.apple.screenIsLocked"), object: nil, queue: .main) { [unowned self] _ in self.stop() }
-        #if SECRET_TEST
-        center.addObserver(forName: testLockNotification, object: nil, queue: .main) { [unowned self] _ in self.stop() }
-        #endif
+        center.addObserver(forName: Notification.Name("com.apple.screenIsLocked"), object: nil, queue: .main) { [unowned self] _ in self.endGrace() }
         RunLoop.main.run()
         stop()
     }
@@ -403,6 +530,7 @@ final class Agent {
     func stop() -> Never {
         unlink(socketPath)  // first: new clients start a new agent
         cache.removeAll()
+        leases.removeAll()
         context?.invalidate()
         close(listenFD)
         exit(0)
@@ -818,10 +946,38 @@ case "read":
     let names = Array(args[3...])
     names.forEach(checkUserName)
     let values = request(["read", noDialog ? "1" : "0", hex(args[2]), names.map { hex($0) }.joined(separator: ",")].joined(separator: "\t"))
+    // the source of each value, l (lease) or g (grace, Touch ID): bin/secret takes it for the log
+    if values.count > 1 { FileHandle.standardError.write(Data("source: \(values[1])\n".utf8)) }
     for v in (values.first ?? "").split(separator: ",", omittingEmptySubsequences: false) {
         // a value is one line: print it as hex, bash decodes it
         print(v == "-" ? "" : v)
     }
+
+case "lease":
+    // lease REASON SECONDS NAME...: prints the end of the lease, seconds since 1970 (026)
+    guard args.count >= 5 else { usage() }
+    let names = Array(args[4...])
+    names.forEach(checkUserName)
+    let a = request(["lease", noDialog ? "1" : "0", hex(args[2]), args[3], names.map { hex($0) }.joined(separator: ",")].joined(separator: "\t"))
+    print(a.first ?? "")
+
+case "lease-status":
+    // NAME and the end per line; it does not start the agent and needs no Touch ID
+    guard let fd = connectAgent() else { exit(0) }
+    defer { close(fd) }
+    guard writeLine(fd, "lease-status"), let answer = readLine(fd) else { exit(0) }
+    let f = answer.split(separator: "\t", omittingEmptySubsequences: false)
+    if f.first == "err" { fail(f.count > 2 ? String(f[2]) : "agent error", f.count > 1 ? Int32(f[1]) ?? 1 : 1) }
+    for e in (f.count > 1 ? f[1] : "").split(separator: ",") {
+        let p = e.split(separator: ":")
+        if p.count == 2, let n = unhexText(p[0]) { print("\(n)\t\(p[1])") }
+    }
+
+case "lease-revoke":
+    guard let fd = connectAgent() else { exit(0) }
+    _ = writeLine(fd, "revoke")
+    _ = readLine(fd)
+    close(fd)
 
 case "write":
     // stdin: hex(name) hex(value) hex(comment) hex(expiry) per line
@@ -927,16 +1083,17 @@ case "clip":
 case "status":
     // One line for SecretBar (014): "ok off grace=N" or "ok active LEFT IDLE LIMIT grace=N".
     // It does not start the agent.
-    var g = "off"
+    var g = "off", lease = ""
     if let fd = connectAgent() {
         if writeLine(fd, "status"), let a = readLine(fd) {
             let f = a.split(separator: "\t")
             if f.count >= 5, f[1] == "active" { g = "active \(f[2]) \(f[3]) \(f[4])" }
+            if let l = f.first(where: { $0.hasPrefix("lease=") }) { lease = " " + l }
         }
         close(fd)
     }
     let policy = vaultGrace().map { "grace=\($0)" } ?? "grace=none"
-    print("ok \(g) \(policy)")
+    print("ok \(g) \(policy)\(lease)")
 
 case "kind":
     // bin/secret takes a replaced helper only when it is a test build (013)
@@ -955,8 +1112,12 @@ case "grace-status":
 
 
 #if SECRET_TEST
-case "test-lock":
-    DistributedNotificationCenter.default().postNotificationName(testLockNotification, object: nil, userInfo: nil, deliverImmediately: true)
+case "test-lock", "test-unlock", "test-sleep":
+    // test build only: the agent takes the screen lock or the sleep as a signal; no agent, no effect
+    guard let fd = connectAgent() else { exit(0) }
+    _ = writeLine(fd, args[1])
+    _ = readLine(fd)
+    close(fd)
 
 case "test-paste":
     // test build only: the string and the concealed mark of the test pasteboard
