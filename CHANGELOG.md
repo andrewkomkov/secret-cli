@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.6.0](https://github.com/andrewkomkov/secret-cli/compare/v1.5.0...v1.6.0) (2026-11-04)
+
+
+### Features
+
+* **cookie:** add loopback bridge daemon and Safari extension assets ([15a1a54](https://github.com/andrewkomkov/secret-cli/commit/15a1a545852f5e6362557dd4239a04d13fd7b840))
+* **cookie:** build and install the Safari extension app ([d0a1e6f](https://github.com/andrewkomkov/secret-cli/commit/d0a1e6fa7c73cbeaaaefa12cc4edc011f8432d92))
+
 ## [1.5.0](https://github.com/andrewkomkov/secret-cli/compare/v1.4.0...v1.5.0) (2026-11-04)
 
 
