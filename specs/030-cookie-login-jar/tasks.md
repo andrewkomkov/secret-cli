@@ -31,4 +31,4 @@
 
 - [x] T017 ручная, 2026-11-04: расширение включено, токен спарен, на portal.example.org кнопка сохранила jar из 13 cookie, включая session-only `ASP.NET_SessionId`
 - [x] T018 ручная, 2026-11-04: `run --cookie-jar TAX_SESSION --update` — curl шлёт `ASP.NET_SessionId`, авторизован: `/app/Notifications` даёт 200 (MainPage.aspx 302 ведёт в кабинет, не на Login)
-- [ ] T019 после приёмки: удалить мусорные секреты `TAX_USER_TOKEN`, `TAX_COOKIE_COMMITSTATUS`, `TAX_COOKIE_ISEMP` (с подтверждением владельца)
+- [x] T019, 2026-11-04: удалены мусорные секреты `TAX_USER_TOKEN`, `TAX_COOKIE_COMMITSTATUS`, `TAX_COOKIE_ISEMP` (с подтверждением владельца)

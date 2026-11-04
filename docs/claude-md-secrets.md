@@ -88,7 +88,7 @@ use the name. Do NOT guess a name.
   `PHPSESSID`): Safari does not write it to disk. The Safari extension reads it from the
   user's real session and posts the jar to the loopback daemon (`secret cookie bridge start`; the
   user pastes the token from `secret cookie bridge token` into the extension once), which calls
-  `secret cookie import --as PROJECT_NAME` with the jar on stdin. Do NOT print the bridge token
+  `secret cookie import --as PROJECT_NAME` with the jar on stdin. `import` merges into an existing secret (the merge reads it: Touch ID); `--replace` overwrites without reading. Do NOT print the bridge token
   into the chat or files. The user logs in in Safari. Do NOT ask for the login, the password or the SMS in
   the chat. If `pull` or `ls` prints `session cookie not on disk: capture it with the Safari
   extension`, ask the user to capture the session.
