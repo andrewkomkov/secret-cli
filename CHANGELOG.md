@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.6.1](https://github.com/andrewkomkov/secret-cli/compare/v1.6.0...v1.6.1) (2026-11-04)
+
+
+### Bug Fixes
+
+* **cookie:** extension icon and the cookie-jar run example ([278b169](https://github.com/andrewkomkov/secret-cli/commit/278b16935fed0cc8638c0880d63fcd8f499e3cdc))
+* **cookie:** keep extension entitlements so Safari registers it ([ab324ff](https://github.com/andrewkomkov/secret-cli/commit/ab324ff02c8d8add0eb80a7f9d93311e02c41ba3))
+
 ## [1.6.0](https://github.com/andrewkomkov/secret-cli/compare/v1.5.0...v1.6.0) (2026-11-04)
 
 
