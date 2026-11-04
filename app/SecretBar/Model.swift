@@ -45,9 +45,17 @@ enum Grace: Equatable {
     case active(left: Int, idle: Int, limit: Int)
 }
 
+// The agent lease (026): how many names it holds and when the earliest end comes (epoch seconds).
+struct LeaseInfo: Equatable {
+    let count: Int
+    let end: Int
+    var endDate: Date { Date(timeIntervalSince1970: TimeInterval(end)) }
+}
+
 struct Status: Equatable {
     var grace: Grace = .off
     var idle: Int?
+    var lease: LeaseInfo?
 }
 
 struct CommandResult {
@@ -156,10 +164,21 @@ enum Parse {
     // `secret-vault status`: "ok off grace=N" or "ok active LEFT IDLE LIMIT grace=N".
     static func status(_ text: String) -> Status? {
         let f = text.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: " ").map(String.init)
-        guard f.first == "ok", let last = f.last else { return nil }
+        guard f.first == "ok" else { return nil }
         var s = Status()
-        if last.hasPrefix("grace=") { s.idle = Int(last.dropFirst(6)) }
-        if f.count == 6, f[1] == "active", let l = Int(f[2]), let i = Int(f[3]), let m = Int(f[4]) {
+        var rest = [String]()
+        // " lease=N:END" comes last and only when a lease exists (026)
+        for t in f.dropFirst() {
+            if t.hasPrefix("grace=") {
+                s.idle = Int(t.dropFirst(6))
+            } else if t.hasPrefix("lease=") {
+                let p = t.dropFirst(6).split(separator: ":").map(String.init)
+                if p.count == 2, let n = Int(p[0]), let e = Int(p[1]), n > 0 { s.lease = LeaseInfo(count: n, end: e) }
+            } else {
+                rest.append(t)
+            }
+        }
+        if rest.count == 4, rest[0] == "active", let l = Int(rest[1]), let i = Int(rest[2]), let m = Int(rest[3]) {
             s.grace = .active(left: l, idle: i, limit: m)
         }
         return s
@@ -466,6 +485,12 @@ final class Store: ObservableObject {
         return r.ok
     }
 
+    // Ends all leases of the agent: `secret lease --revoke` (026). The row goes with the next status.
+    func revokeLease() async {
+        guard !demo else { status.lease = nil; return }
+        await perform("Lease", ["lease", "--revoke"], done: String(localized: "Lease revoked"), symbol: "lock.fill", refresh: false)
+    }
+
     func lock() async {
         guard !demo else { return }
         busy = "Lock"
@@ -670,6 +695,9 @@ enum SelfTest {
         check("status: active", Parse.status("ok active 1799 1800 28799 grace=1800") == Status(grace: .active(left: 1799, idle: 1800, limit: 28799), idle: 1800))
         check("status: no policy", Parse.status("ok off grace=none")?.idle == nil)
         check("status: error", Parse.status("err") == nil)
+        check("status: lease", Parse.status("ok off grace=1800 lease=2:1900000000") == Status(grace: .off, idle: 1800, lease: LeaseInfo(count: 2, end: 1900000000)))
+        check("status: active and lease", Parse.status("ok active 1799 1800 28799 grace=none lease=1:1900000000") == Status(grace: .active(left: 1799, idle: 1800, limit: 28799), idle: nil, lease: LeaseInfo(count: 1, end: 1900000000)))
+        check("status: no lease", Parse.status("ok off grace=1800")?.lease == nil)
         let access = "2026-10-07T12:00:00Z\tget\thuman\tA\t-\n2026-10-07T12:01:00Z\trun\tagent\tA B\tsh\n"
         let agent = "2026-10-07T12:00:30Z pid=5 touch id asked: use A for sh\n2026-10-07T12:00:31Z pid=5 touch id confirmed after 0.7s\n2026-10-07T12:00:32Z pid=5 preload: 3 values\n"
         let a = Parse.activity(access: access, agent: agent, limit: 10)
