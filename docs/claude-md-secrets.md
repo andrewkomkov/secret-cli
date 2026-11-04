@@ -94,7 +94,8 @@ use the name. Do NOT guess a name.
   extension`, ask the user to capture the session.
 - A jar is one secret (Netscape format, base64). `secret cookie ls --jar NAME` shows names, domains,
   flags and expiry, no values. Use it with
-  `secret run --mask --cookie-jar NAME --update -- curl -b "$SECRET_COOKIE_JAR" -c "$SECRET_COOKIE_JAR" URL`.
+  `secret run --mask --cookie-jar NAME --update -- sh -c 'curl -b "$SECRET_COOKIE_JAR" -c "$SECRET_COOKIE_JAR" URL'`.
+  Wrap it in `sh -c '...'`: `$SECRET_COOKIE_JAR` must be expanded by the command, not by the shell that starts `secret run`.
   The jar goes to a temp file (mode 600) that is deleted after the command; `--update` saves new
   cookies back. Do NOT read `$SECRET_COOKIE_JAR` with `cat`, `cp` and the like: the hook stops it.
 

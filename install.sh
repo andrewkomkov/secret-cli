@@ -169,7 +169,7 @@ extdest="/Applications/SecretBarCookies.app"
 [ -w /Applications ] || extdest="$HOME/Applications/SecretBarCookies.app"
 if [ $app -eq 1 ] || [ -d "$extdest" ] || [ -d "$HOME/Applications/SecretBarCookies.app" ]; then
   [ "$extdest" = "$HOME/Applications/SecretBarCookies.app" ] || rm -rf "$HOME/Applications/SecretBarCookies.app"
-  sum="$(cat "$root"/app/extension/manifest.json "$root"/app/extension/*.html "$root"/app/extension/*.js | shasum -a 256 | cut -d' ' -f1)"
+  sum="$(cat "$root"/app/extension/manifest.json "$root"/app/extension/*.html "$root"/app/extension/*.js "$root"/app/extension/icons/* | shasum -a 256 | cut -d' ' -f1)"
   if [ -d "$root/build/SecretBarCookies.app" ] && [ "$(cat "$root/build/SecretBarCookies.src-sha256" 2>/dev/null)" = "$sum" ] \
       && codesign --verify --strict "$root/build/SecretBarCookies.app" 2>/dev/null || "$root/app/extension/build.sh" "$root/build" >/dev/null; then
     mkdir -p "$HOME/Applications"
