@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/andrewkomkov/secret-cli/compare/v1.4.0...v1.5.0) (2026-11-04)
+
+
+### Features
+
+* **cookie:** add cookie jars with import and run --cookie-jar ([00c0349](https://github.com/andrewkomkov/secret-cli/commit/00c03497a67a6681ceaa00097d112bab56094d34))
+
 ## [1.4.0](https://github.com/andrewkomkov/secret-cli/compare/v1.3.0...v1.4.0) (2026-11-03)
 
 
