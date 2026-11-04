@@ -265,7 +265,7 @@ secret run --mask --cookie-jar SHOP_SESSION --update -- \
 | `secret cookie pull DOMAIN NAME --as SECRET [--path PATH] [--profile ID]` | записать значение cookie Safari в SECRET с комментарием `safari cookie DOMAIN NAME, profile PROFILE` и датой протухания cookie. `--path` выбирает одну из cookie с одним именем. При нескольких профилях берётся cookie с самой поздней датой; `--profile` выбирает профиль |
 | `secret cookie pull DOMAIN --all --as SECRET [--profile ID]` | записать все persistent cookie Safari для DOMAIN как один cookie-jar |
 | `secret cookie bridge token\|start\|stop` | loopback-демон для расширения Safari: `token` печатает токен спаривания (создаёт `bridge.json`, 0600), `start` и `stop` запускают и останавливают демон |
-| `secret cookie import --as SECRET [--domain D]` | прочитать cookie-jar в формате Netscape из stdin и записать как cookie-jar SECRET (base64); источник для session-only cookie — расширение Safari |
+| `secret cookie import --as SECRET [--domain D] [--replace]` | прочитать cookie-jar в формате Netscape из stdin и записать как cookie-jar SECRET (base64); источник для session-only cookie — расширение Safari. Если SECRET уже есть, cookie сливаются со старыми (ключ `domain|path|name`, новый побеждает); слияние читает SECRET, поэтому просит Touch ID. `--replace` перезаписывает и SECRET не читает |
 | `secret cookie ls --jar SECRET` | список cookie в jar: имя, домен, флаги, срок; значений нет |
 | `secret run --cookie-jar SECRET [--update] -- CMD` | записать jar во временный файл (права 600), путь в `$SECRET_COOKIE_JAR`, удалить после CMD; `--update` сохраняет изменения |
 | `secret mv [-f] OLD NEW` | переименовать со значением, комментарием и сроком |

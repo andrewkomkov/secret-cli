@@ -268,7 +268,7 @@ the shell that runs `secret run` would expand it to empty too early.
 | `secret cookie pull DOMAIN NAME --as SECRET [--path PATH] [--profile ID]` | store the value of the Safari cookie as SECRET with the comment `safari cookie DOMAIN NAME, profile PROFILE` and the cookie expiry date. `--path` picks one of several cookies with the same name. With several profiles, the cookie that expires last; `--profile` picks a profile |
 | `secret cookie pull DOMAIN --all --as SECRET [--profile ID]` | store all persistent Safari cookies of DOMAIN as one cookie jar |
 | `secret cookie bridge token\|start\|stop` | the loopback daemon for the Safari extension: `token` prints the pairing token (creates `bridge.json`, 0600), `start` and `stop` run and end the daemon |
-| `secret cookie import --as SECRET [--domain D]` | read a Netscape cookie jar from stdin and store it as a cookie jar SECRET (base64); the Safari extension is the source for session-only cookies |
+| `secret cookie import --as SECRET [--domain D] [--replace]` | read a Netscape cookie jar from stdin and store it as a cookie jar SECRET (base64); the Safari extension is the source for session-only cookies. If SECRET exists, the cookies are merged into it (key `domain|path|name`, the new one wins); the merge reads SECRET, so it asks for Touch ID. `--replace` overwrites and does not read SECRET |
 | `secret cookie ls --jar SECRET` | list the cookies of a jar: name, domain, flags, expiry; no values |
 | `secret run --cookie-jar SECRET [--update] -- CMD` | write the jar to a temp file (mode 600), path in `$SECRET_COOKIE_JAR`, delete it after CMD; `--update` saves changes back |
 | `secret mv [-f] OLD NEW` | rename with the value, comment and expiry date |

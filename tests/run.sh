@@ -816,6 +816,27 @@ fi
   check "030: import needs --as" bash -c "! '$SECRET' cookie import < '$FJAR' 2>/dev/null"
   check "030: import takes no value in argv (unknown argument)" bash -c "! '$SECRET' cookie import --as LJ_X SESSVAL-AAAA < '$FJAR' 2>/dev/null && ! '$SECRET' has LJ_X"
 
+  # 031: merge
+  JA="$TMP/ma.jar"; JB="$TMP/mb.jar"; JA2="$TMP/ma2.jar"; JC="$TMP/mc.jar"
+  printf '# Netscape HTTP Cookie File\n#HttpOnly_.a.test\tTRUE\t/\tTRUE\t0\tsidA\tAVAL-1111\n.a.test\tTRUE\t/\tFALSE\t1900000000\tprefA\tAVAL-2222\n' > "$JA"
+  printf '# Netscape HTTP Cookie File\n.b.test\tTRUE\t/\tFALSE\t1800000000\tprefB\tBVAL-3333\n' > "$JB"
+  printf '# Netscape HTTP Cookie File\n.a.test\tTRUE\t/\tTRUE\t0\tsidA\tAVAL-9999\n' > "$JA2"
+  printf '# Netscape HTTP Cookie File\n.c.test\tTRUE\t/\tFALSE\t0\tonlyC\tCVAL-4444\n' > "$JC"
+  s cookie import --as MG_J < "$JA" >/dev/null 2>&1
+  s cookie import --as MG_J < "$JB" >"$TMP/mg.out" 2>&1
+  check "031: merge keeps the cookies of both domains" bash -c "out=\$('$SECRET' cookie ls --jar MG_J); [[ \$out == *sidA* && \$out == *prefA* && \$out == *prefB* ]]"
+  check "031: merge keeps one header line" bash -c "[ \$('$SECRET' get MG_J | base64 -D | grep -c '^# Netscape HTTP Cookie File\$') = 1 ]"
+  check "031: merge comment and expiry cover the merged set" bash -c "[ \"\$('$SECRET' note MG_J)\" = 'cookie jar b.test via safari extension, 3 cookies, session-only: sidA' ] && '$SECRET' ls -l | grep -E '^MG_J ' | grep -q ' 2027-01-15 '"
+  s cookie import --as MG_J < "$JA2" >/dev/null 2>&1
+  check "031: same key updated, no duplicate" bash -c "j=\$('$SECRET' get MG_J | base64 -D); [ \$(grep -c 'sidA' <<<\"\$j\") = 1 ] && grep -q AVAL-9999 <<<\"\$j\" && ! grep -q AVAL-1111 <<<\"\$j\" && grep -q prefB <<<\"\$j\""
+  check "031: HttpOnly prefix does not split the key" bash -c "j=\$('$SECRET' get MG_J | base64 -D); ! grep -q '#HttpOnly_.a.test.*sidA' <<<\"\$j\" && [ \$(grep -c sidA <<<\"\$j\") = 1 ]"
+  s cookie import --as MG_J --replace < "$JC" >/dev/null 2>&1
+  check "031: --replace keeps only the last jar" bash -c "j=\$('$SECRET' get MG_J | base64 -D); grep -q onlyC <<<\"\$j\" && ! grep -q -e sidA -e prefB <<<\"\$j\""
+  check "031: --replace recomputes the comment and drops the expiry" bash -c "[ \"\$('$SECRET' note MG_J)\" = 'cookie jar c.test via safari extension, 1 cookies, session' ] && ! '$SECRET' ls -l | grep -E '^MG_J ' | grep -qE '20[0-9]{2}-'"
+  check "031: import prints no value" bash -c "! grep -q -e AVAL -e BVAL '$TMP/mg.out'"
+  check "031: ls --jar after merge prints no values" bash -c "! '$SECRET' cookie ls --jar MG_J 2>&1 | grep -q -e AVAL -e BVAL -e CVAL"
+  check "031: a new name is stored without a merge" bash -c "'$SECRET' cookie import --as MG_N < '$JA' >/dev/null 2>&1 && [ \"\$('$SECRET' get MG_N | base64 -D)\" = \"\$(cat '$JA')\" ]"
+
   # ls --jar
   check "030: ls --jar shows names, domains and flags" bash -c "out=\$('$SECRET' cookie ls --jar LJ_A); [[ \$out == *ASP.NET_SessionId* && \$out == *HttpOnly,Secure,session* && \$out == *2030-01-01* && \$out == *shop.test* ]]"
   check "030: ls --jar prints no values" bash -c "! '$SECRET' cookie ls --jar LJ_A 2>&1 | grep -q -e SESSVAL -e PREFVAL"
