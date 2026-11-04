@@ -978,6 +978,52 @@ check "024: version" bash -c "'$SECRET' version | grep -qxE 'secret [0-9]+\.[0-9
 check "024: --version" test "$(s --version)" = "$(s version)"
 check "024: version is marked for release-please" grep -qE '^VERSION="[0-9.]+" # x-release-please-version$' "$SECRET"
 
+# --- 030: bridge daemon (loopback), without a browser
+BR_DIR="$ROOT/build/test"
+BR="$BR_DIR/secret-bridge-test"
+if [ ! -x "$BR" ] || [ "$(cat "$BR_DIR/secret-bridge-test.src-sha256" 2>/dev/null)" != "$(shasum -a 256 "$ROOT/helper/bridge/main.swift" | cut -d' ' -f1)" ]; then
+  "$ROOT/helper/bridge/build.sh" Test "$BR_DIR" >/dev/null 2>&1 || rm -f "$BR"
+fi
+if [ ! -x "$BR" ]; then
+  echo "skip  030-bridge: no test build of the bridge daemon (swiftc is needed)"
+else
+  BRS="$TMP/bridge/bridge.json"
+  mkdir -p "$TMP/bridge"
+  BRP="$(perl -MIO::Socket::INET -e '$s = IO::Socket::INET->new(Listen => 1, LocalAddr => "127.0.0.1", LocalPort => 0) or die; print $s->sockport')"
+  export SECRET_BRIDGE_STATE="$BRS" SECRET_BRIDGE_PORT="$BRP" SECRET_BRIDGE_BIN="$BR"
+  BRJAR="$TMP/bridge.jar"
+  printf '# Netscape HTTP Cookie File\n#HttpOnly_.shop.test\tTRUE\t/\tTRUE\t0\tASP.NET_SessionId\tBRSESS-7777\n.shop.test\tTRUE\t/\tFALSE\t1893456000\tpref\tBRPREF-8888\n' > "$BRJAR"
+
+  check "030-bridge: start without a token fails" bash -c "! '$SECRET' cookie bridge start 2>/dev/null"
+  BTOK="$(s cookie bridge token)"
+  check "030-bridge: token is 48 hex characters" bash -c "[[ '$BTOK' =~ ^[0-9a-f]{48}\$ ]]"
+  check "030-bridge: state file is 0600 with token and port" bash -c "[ \"\$(stat -f %Lp '$BRS')\" = 600 ] && grep -q '\"token\":\"$BTOK\"' '$BRS'"
+  check "030-bridge: token is stable on the second call" test "$(s cookie bridge token)" = "$BTOK"
+  check "030-bridge: start" bash -c "'$SECRET' cookie bridge start | grep -q 'running on 127.0.0.1:$BRP'"
+  check "030-bridge: pid file written" test -s "$TMP/bridge/bridge.pid"
+  check "030-bridge: listens on 127.0.0.1 only" bash -c "l=\$(lsof -nP -iTCP:$BRP -sTCP:LISTEN); grep -q '127.0.0.1:$BRP' <<<\"\$l\" && ! grep -qE '(\\*|\\[::\\]):$BRP' <<<\"\$l\""
+  post() { curl -s -o /dev/null -w '%{http_code}' --max-time 20 -X POST --data-binary @"$BRJAR" -H 'Content-Type: text/plain' "$@"; }
+  U="http://127.0.0.1:$BRP"
+  check "030-bridge: good token stores the jar (200)" test "$(post -H "X-Secret-Token: $BTOK" "$U/jar?as=BR_OK")" = 200
+  check "030-bridge: the jar arrived (ls --jar)" bash -c "out=\$('$SECRET' cookie ls --jar BR_OK); [[ \$out == *ASP.NET_SessionId* && \$out == *pref* ]]"
+  check "030-bridge: the stored jar equals the body" bash -c "[ \"\$('$SECRET' get BR_OK | base64 -D)\" = \"\$(cat '$BRJAR')\" ]"
+  check "030-bridge: wrong token is rejected (403) and stores nothing" bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST --data-binary @'$BRJAR' -H 'X-Secret-Token: nope' '$U/jar?as=BR_BAD')\" = 403 ] && ! '$SECRET' has BR_BAD"
+  check "030-bridge: missing token is rejected (401) and stores nothing" bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST --data-binary @'$BRJAR' '$U/jar?as=BR_NOTOK')\" = 401 ] && ! '$SECRET' has BR_NOTOK"
+  check "030-bridge: a foreign Host header is rejected (403)" bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST --data-binary @'$BRJAR' -H 'Host: evil.test' -H 'X-Secret-Token: $BTOK' '$U/jar?as=BR_HOST')\" = 403 ] && ! '$SECRET' has BR_HOST"
+  check "030-bridge: other path gives 404" test "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "X-Secret-Token: $BTOK" "$U/other")" = 404
+  check "030-bridge: GET /jar is not allowed (405)" test "$(curl -s -o /dev/null -w '%{http_code}' -H "X-Secret-Token: $BTOK" "$U/jar?as=BR_G")" = 405
+  check "030-bridge: bad secret name gives 400" test "$(post -H "X-Secret-Token: $BTOK" "$U/jar?as=bad%20name")" = 400
+  check "030-bridge: missing name gives 400" test "$(post -H "X-Secret-Token: $BTOK" "$U/jar")" = 400
+  check "030-bridge: a body without cookies is refused and stores nothing" bash -c "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST --data-binary 'nothing here' -H 'X-Secret-Token: $BTOK' '$U/jar?as=BR_EMPTY')\" = 422 ] && ! '$SECRET' has BR_EMPTY"
+  check "030-bridge: preflight OPTIONS answers 204" test "$(curl -s -o /dev/null -w '%{http_code}' -X OPTIONS "$U/jar")" = 204
+  check "030-bridge: the daemon does not print cookie values" bash -c "! grep -q -e BRSESS -e BRPREF '$TMP/bridge/bridge.err'"
+  check "030-bridge: stop" bash -c "'$SECRET' cookie bridge stop | grep -q stopped && sleep 0.3 && ! curl -s --max-time 2 '$U/jar' && [ ! -e '$TMP/bridge/bridge.pid' ]"
+  check "030-bridge: stop when not running" bash -c "'$SECRET' cookie bridge stop | grep -q 'not running'"
+  check "030-bridge: no helper: unavailable" bash -c "out=\$(SECRET_BRIDGE_BIN='$TMP/none' '$SECRET' cookie bridge start 2>&1); [ \$? -ne 0 ] && [[ \$out == *'not available'* ]]"
+  "$SECRET" cookie bridge stop >/dev/null 2>&1
+  unset SECRET_BRIDGE_STATE SECRET_BRIDGE_PORT SECRET_BRIDGE_BIN
+fi
+
 echo
 echo "passed: $pass, failed: $fail"
 [ "$fail" -eq 0 ]

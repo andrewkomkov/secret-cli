@@ -200,8 +200,9 @@ and the expiry date of the cookie, so `secret ls --expiring` warns in time. Note
 
 Some sites (ASP.NET: `ASP.NET_SessionId`; also `JSESSIONID`, `PHPSESSID`) keep the session in an
 HttpOnly cookie without an expiry date. Safari never writes it to disk, so `pull NAME` cannot get it.
-A Safari extension is coming that reads these cookies from your real Safari session and feeds
-`secret cookie import`; `import` already works with any Netscape cookie jar on stdin. All cookies of
+A Safari extension (`app/extension`) reads these cookies from your real Safari session and sends
+them to a loopback daemon, which calls `secret cookie import`; `import` also works with any
+Netscape cookie jar on stdin. All cookies of
 the domain are stored as one cookie jar. `pull DOMAIN --all` stores the persistent ones from the
 Safari files.
 
@@ -223,6 +224,21 @@ secret run --mask --cookie-jar SHOP_SESSION --update -- \
 - The Claude Code hook stops `cat`, `cp` and similar on `$SECRET_COOKIE_JAR`.
 - `--mask` does not mask a value shorter than 4 characters (it would turn `302` into `3***2`) and
   prints `mask skipped for short value NAME` once.
+- The bridge daemon `secret-bridge` (built by `./install.sh` with `swiftc`) listens on `127.0.0.1`
+  only (port 17659 by default) and accepts `POST /jar?as=NAME` with the header `X-Secret-Token`.
+  With the right token it passes the body (a Netscape jar) to `secret cookie import --as NAME` on
+  stdin; a wrong or missing token gives 401/403, another path 404. It never logs the body.
+
+  ```sh
+  secret cookie bridge token    # makes ~/.local/state/secret/bridge.json (0600) once, prints the token
+  secret cookie bridge start    # runs the daemon in the background
+  secret cookie bridge stop
+  ```
+
+  Manual steps for the extension (its Xcode wrapper comes next): enable it in Safari Settings,
+  Extensions; allow it on the site (per-site access to cookies); open its settings and paste the
+  token from `secret cookie bridge token`, the name of the secret and the port; log in on the
+  site and click the extension button. The jar goes extension, loopback, daemon, `import` stdin.
 - Use `pull` for persistent cookies and the Safari extension (`import`) for session cookies. If
   `pull` or `cookie ls` sees a known session cookie, it prints `session cookie not on disk: capture
   it with the Safari extension (secret cookie import --as NAME)`.
@@ -248,6 +264,7 @@ secret run --mask --cookie-jar SHOP_SESSION --update -- \
 | `secret cookie ls [--profile ID] DOMAIN` | list the Safari cookies of DOMAIN in all profiles (a cookie of `.example.com` also covers its subdomains): name, path, `Secure`/`HTTPOnly`, expiry, profile. Prints no values. Needs Full Disk Access |
 | `secret cookie pull DOMAIN NAME --as SECRET [--path PATH] [--profile ID]` | store the value of the Safari cookie as SECRET with the comment `safari cookie DOMAIN NAME, profile PROFILE` and the cookie expiry date. `--path` picks one of several cookies with the same name. With several profiles, the cookie that expires last; `--profile` picks a profile |
 | `secret cookie pull DOMAIN --all --as SECRET [--profile ID]` | store all persistent Safari cookies of DOMAIN as one cookie jar |
+| `secret cookie bridge token\|start\|stop` | the loopback daemon for the Safari extension: `token` prints the pairing token (creates `bridge.json`, 0600), `start` and `stop` run and end the daemon |
 | `secret cookie import --as SECRET [--domain D]` | read a Netscape cookie jar from stdin and store it as a cookie jar SECRET (base64); the Safari extension is the source for session-only cookies |
 | `secret cookie ls --jar SECRET` | list the cookies of a jar: name, domain, flags, expiry; no values |
 | `secret run --cookie-jar SECRET [--update] -- CMD` | write the jar to a temp file (mode 600), path in `$SECRET_COOKIE_JAR`, delete it after CMD; `--update` saves changes back |
