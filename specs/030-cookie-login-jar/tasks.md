@@ -24,7 +24,7 @@
 
 ## Этап 2b — Xcode-обёртка расширения (ручная сборка)
 
-- [ ] T015 Xcode-приложение расширения через `xcrun safari-web-extension-converter app/extension`, подпись, сборка в `app/`
+- [x] T015 Xcode-приложение расширения через `xcrun safari-web-extension-converter app/extension`, подпись, сборка в `app/`
 - [ ] T016 переводы `ru` строк расширения
 
 ## Ручные проверки

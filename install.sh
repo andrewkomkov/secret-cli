@@ -163,6 +163,24 @@ if [ $app -eq 1 ] || [ -d "$dest" ] || [ -d "$HOME/Applications/SecretBar.app" ]
   fi
 fi
 
+# SecretBarCookies (030): the Safari extension app. Safari lists the extension only after its
+# container app has run once, so this opens it. The user enables it and grants per-site access.
+extdest="/Applications/SecretBarCookies.app"
+[ -w /Applications ] || extdest="$HOME/Applications/SecretBarCookies.app"
+if [ $app -eq 1 ] || [ -d "$extdest" ] || [ -d "$HOME/Applications/SecretBarCookies.app" ]; then
+  [ "$extdest" = "$HOME/Applications/SecretBarCookies.app" ] || rm -rf "$HOME/Applications/SecretBarCookies.app"
+  sum="$(cat "$root"/app/extension/manifest.json "$root"/app/extension/*.html "$root"/app/extension/*.js | shasum -a 256 | cut -d' ' -f1)"
+  if [ -d "$root/build/SecretBarCookies.app" ] && [ "$(cat "$root/build/SecretBarCookies.src-sha256" 2>/dev/null)" = "$sum" ] \
+      && codesign --verify --strict "$root/build/SecretBarCookies.app" 2>/dev/null || "$root/app/extension/build.sh" "$root/build" >/dev/null; then
+    mkdir -p "$HOME/Applications"
+    rm -rf "$extdest" && ditto "$root/build/SecretBarCookies.app" "$extdest"
+    open "$extdest" 2>/dev/null || true
+    echo "safari extension: $extdest (enable it in Safari > Settings > Extensions, then pair the token)" >&2
+  else
+    echo "safari extension: build failed (Xcode needed)" >&2
+  fi
+fi
+
 if [ $claude_hook -eq 1 ]; then
   "$root/hooks/install-claude.sh" "$root" "${CLAUDE_SETTINGS:-$HOME/.claude/settings.json}" "${CLAUDE_MD:-$HOME/.claude/CLAUDE.md}"
 fi
