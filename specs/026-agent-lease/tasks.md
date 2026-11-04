@@ -44,7 +44,7 @@
 
 <!-- утр-100: 8.1 — строки задач spec-kit: файл, действие и условия в одном пункте -->
 - [x] T013 [US4] `helper/store/main.swift`: запрос `lease-status`, команда `lease-status`; поле `lease=N:END` в строке `status` для SecretBar. `bin/secret lease status` по контракту
-- [ ] T014 [US4] `app/SecretBar/`: строка активной аренды (число имён, конец) и кнопка «Revoke lease», вызов `bin/secret lease --revoke`. Перевод `ru` в `Localizable.xcstrings`
+- [x] T014 [US4] `app/SecretBar/`: строка активной аренды (число имён, конец) и кнопка «Revoke lease», вызов `bin/secret lease --revoke`. Перевод `ru` в `Localizable.xcstrings`
 
 ## Phase 7: Тесты и документы
 

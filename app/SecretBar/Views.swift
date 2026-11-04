@@ -75,6 +75,27 @@ struct StatusPill: View {
     }
 }
 
+// The active agent lease (026): the count of names and the end time, with a button to end it.
+struct LeaseRow: View {
+    @EnvironmentObject var store: Store
+    var body: some View {
+        if let lease = store.status.lease {
+            HStack(spacing: 8) {
+                Image(systemName: "key.fill").font(.system(size: 11, weight: .semibold)).foregroundStyle(.blue)
+                Text("Leased names: \(lease.count) · until \(lease.endDate.formatted(date: .omitted, time: .shortened))")
+                    .font(.system(size: 11, weight: .medium)).lineLimit(1)
+                Spacer(minLength: 0)
+                Button("Revoke lease") { Task { await store.revokeLease() } }
+                    .controlSize(.small).buttonStyle(.bordered)
+            }
+            .padding(.horizontal, 10).padding(.vertical, 6)
+            .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(Color.blue.opacity(0.1)))
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
+        }
+    }
+}
+
 struct ToastView: View {
     let toast: Store.Toast
     var body: some View {
@@ -137,6 +158,8 @@ struct MenuBarView: View {
             .padding(.horizontal, 10).padding(.vertical, 7)
             .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(Color.primary.opacity(0.06)))
             .padding(.horizontal, 12)
+
+            LeaseRow()
 
             if store.expiredCount + store.soonCount > 0 {
                 Button { Navigation.shared.sidebar = .expiring; Navigation.shared.showMain() } label: {

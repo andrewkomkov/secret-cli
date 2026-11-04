@@ -723,6 +723,36 @@
         }
       }
     },
+    "Lease revoked" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Аренда отозвана"
+          }
+        }
+      }
+    },
+    "Leased names: %lld · until %@" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Аренда: %lld имён · до %@"
+          }
+        }
+      }
+    },
+    "Revoke lease" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отозвать аренду"
+          }
+        }
+      }
+    },
     "Lock now" : {
       "localizations" : {
         "ru" : {
