@@ -31,15 +31,10 @@ if ! xcodebuild -project "$proj" -scheme "$app_name" -configuration Release -des
 fi
 app="$tmp/dd/Build/Products/Release/$app_name.app"
 [ -d "$app" ] || { echo "ext: build produced no app" >&2; exit 1; }
-# Re-sign with the Apple Development certificate when present: inner .appex first, then the app.
-cert="$(security find-identity -v -p codesigning 2>/dev/null | awk '/"Apple Development/ && !/CSSMERR/ { print $2; exit }')"
-if [ -n "$cert" ]; then
-  for ax in "$app/Contents/PlugIns/"*.appex; do
-    [ -e "$ax" ] && { codesign -f -s "$cert" -o runtime --timestamp=none "$ax" 2>/dev/null || true; }
-  done
-  codesign -f -s "$cert" -o runtime --timestamp=none "$app" 2>/dev/null \
-    || echo "ext: Apple Development signature failed, ad-hoc kept" >&2
-fi
+# Keep xcodebuild's ad-hoc signature as is: it carries the App Sandbox entitlements the extension
+# needs to register with Safari. A re-sign without --entitlements strips them and the extension
+# never appears. Apple Development gives Safari extensions nothing extra: Safari still needs
+# "Allow Unsigned Extensions" without Developer ID notarization, which needs a paid account.
 mkdir -p "$out"
 rm -rf "$out/$app_name.app.new"
 cp -R "$app" "$out/$app_name.app.new"
