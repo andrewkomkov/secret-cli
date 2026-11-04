@@ -85,9 +85,11 @@ use the name. Do NOT guess a name.
 - Choose by the cookie. A persistent cookie (it has an expiry date in `secret cookie ls`): use
   `pull`; `pull DOMAIN --all --as PROJECT_NAME` stores all persistent cookies of the domain as one
   jar. A session cookie (HttpOnly, no expiry, for example `ASP.NET_SessionId`, `JSESSIONID`,
-  `PHPSESSID`): Safari does not write it to disk. The Safari extension (coming) reads it from the
-  user's real session and calls `secret cookie import --as PROJECT_NAME`, which reads a Netscape
-  jar from stdin. The user logs in in Safari. Do NOT ask for the login, the password or the SMS in
+  `PHPSESSID`): Safari does not write it to disk. The Safari extension reads it from the
+  user's real session and posts the jar to the loopback daemon (`secret cookie bridge start`; the
+  user pastes the token from `secret cookie bridge token` into the extension once), which calls
+  `secret cookie import --as PROJECT_NAME` with the jar on stdin. Do NOT print the bridge token
+  into the chat or files. The user logs in in Safari. Do NOT ask for the login, the password or the SMS in
   the chat. If `pull` or `ls` prints `session cookie not on disk: capture it with the Safari
   extension`, ask the user to capture the session.
 - A jar is one secret (Netscape format, base64). `secret cookie ls --jar NAME` shows names, domains,

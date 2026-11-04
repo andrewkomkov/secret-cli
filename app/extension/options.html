@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Secret Cookie Bridge: settings</title>
+  <style>
+    body { font: 14px -apple-system, sans-serif; margin: 20px; max-width: 480px; }
+    label { display: block; margin-top: 12px; }
+    input { font: inherit; width: 100%; box-sizing: border-box; }
+    button { font: inherit; margin-top: 16px; padding: 6px 12px; }
+    #status { margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Secret Cookie Bridge</h1>
+  <label>Token (from <code>secret cookie bridge token</code>)
+    <input id="token" type="password" autocomplete="off">
+  </label>
+  <label>Secret name (UPPER_SNAKE_CASE)
+    <input id="name" type="text" placeholder="SHOP_SESSION">
+  </label>
+  <label>Port
+    <input id="port" type="number" min="1" max="65535" value="17659">
+  </label>
+  <button id="save">Save</button>
+  <div id="status"></div>
+  <script src="options.js"></script>
+</body>
+</html>

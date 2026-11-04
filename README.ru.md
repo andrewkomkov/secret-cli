@@ -196,9 +196,9 @@ secret cookie pull example.com --all --as SHOP_JAR                     # все 
 **Session cookie и cookie-jar**
 
 Некоторые сайты (ASP.NET: `ASP.NET_SessionId`; также `JSESSIONID`, `PHPSESSID`) держат сессию в
-HttpOnly cookie без срока. Safari не пишет её на диск, поэтому `pull NAME` её не достанет. Готовится
-расширение Safari: оно читает такие cookie из вашей настоящей сессии и передаёт их в
-`secret cookie import`; `import` уже сейчас принимает любой cookie-jar в формате Netscape из stdin.
+HttpOnly cookie без срока. Safari не пишет её на диск, поэтому `pull NAME` её не достанет. Расширение Safari
+(`app/extension`) читает такие cookie из вашей настоящей сессии и передаёт их loopback-демону, а тот
+вызывает `secret cookie import`; `import` принимает любой cookie-jar в формате Netscape из stdin.
 Все cookie домена сохраняются как один cookie-jar. `pull DOMAIN --all` сохраняет persistent cookie
 из файлов Safari.
 
@@ -220,6 +220,22 @@ secret run --mask --cookie-jar SHOP_SESSION --update -- \
 - Хук Claude Code блокирует `cat`, `cp` и подобное по `$SECRET_COOKIE_JAR`.
 - `--mask` не маскирует значение короче 4 символов (иначе `302` станет `3***2`) и один раз печатает
   `mask skipped for short value NAME`.
+- Демон моста `secret-bridge` (его собирает `./install.sh` через `swiftc`) слушает только
+  `127.0.0.1` (порт по умолчанию 17659) и принимает `POST /jar?as=NAME` с заголовком
+  `X-Secret-Token`. При верном токене он передаёт тело (jar в формате Netscape) в
+  `secret cookie import --as NAME` через stdin; неверный или пустой токен даёт 401/403, другой
+  путь даёт 404. Тело в лог не пишется.
+
+  ```sh
+  secret cookie bridge token    # один раз создаёт ~/.local/state/secret/bridge.json (0600), печатает токен
+  secret cookie bridge start    # запускает демон в фоне
+  secret cookie bridge stop
+  ```
+
+  Ручные шаги для расширения (его Xcode-обёртка появится следом): включите его в настройках Safari,
+  раздел «Расширения»; разрешите доступ к сайту (доступ к cookie по сайтам); откройте настройки
+  расширения и вставьте токен из `secret cookie bridge token`, имя секрета и порт; войдите на сайт и
+  нажмите кнопку расширения. jar идёт так: расширение, loopback, демон, stdin команды `import`.
 - Для persistent cookie берите `pull`, для session cookie — расширение Safari (`import`). Если
   `pull` или `cookie ls` видит известный session cookie, он печатает `session cookie not on disk:
   capture it with the Safari extension (secret cookie import --as NAME)`.
@@ -245,6 +261,7 @@ secret run --mask --cookie-jar SHOP_SESSION --update -- \
 | `secret cookie ls [--profile ID] DOMAIN` | список cookie Safari для DOMAIN во всех профилях (cookie `.example.com` покрывает и поддомены): имя, путь, `Secure`/`HTTPOnly`, срок, профиль. Значений нет. Нужен Full Disk Access |
 | `secret cookie pull DOMAIN NAME --as SECRET [--path PATH] [--profile ID]` | записать значение cookie Safari в SECRET с комментарием `safari cookie DOMAIN NAME, profile PROFILE` и датой протухания cookie. `--path` выбирает одну из cookie с одним именем. При нескольких профилях берётся cookie с самой поздней датой; `--profile` выбирает профиль |
 | `secret cookie pull DOMAIN --all --as SECRET [--profile ID]` | записать все persistent cookie Safari для DOMAIN как один cookie-jar |
+| `secret cookie bridge token\|start\|stop` | loopback-демон для расширения Safari: `token` печатает токен спаривания (создаёт `bridge.json`, 0600), `start` и `stop` запускают и останавливают демон |
 | `secret cookie import --as SECRET [--domain D]` | прочитать cookie-jar в формате Netscape из stdin и записать как cookie-jar SECRET (base64); источник для session-only cookie — расширение Safari |
 | `secret cookie ls --jar SECRET` | список cookie в jar: имя, домен, флаги, срок; значений нет |
 | `secret run --cookie-jar SECRET [--update] -- CMD` | записать jar во временный файл (права 600), путь в `$SECRET_COOKIE_JAR`, удалить после CMD; `--update` сохраняет изменения |

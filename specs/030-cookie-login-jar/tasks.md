@@ -14,16 +14,21 @@
 - [x] T008 `tests/run.sh`: формат jar, round-trip `--update`, маска по cookie, короткие значения, hook, протокол `import`
 - [x] T009 README, README.ru, сайт, `docs/claude-md-secrets.md`: `import`, `--cookie-jar`, `pull --all`, выбор между `pull` и расширением
 
-## Этап 2 — расширение Safari + мост
+## Этап 2a — тестируемое ядро (без GUI)
 
-- [ ] T010 [US1] расширение Safari (Web Extension, право `cookies`): чтение cookie активного домена, сборка Netscape jar, кнопка, настройка имени и токена
-- [ ] T011 [US1] loopback-сервер в SecretBar: `127.0.0.1` случайный порт, токен спарки, приём только с loopback, вызов `secret cookie import --as NAME` из stdin
-- [ ] T012 [US1] Xcode: таргет расширения в проекте SecretBar, подпись, сборка в `app/build.sh`, интерфейс SecretBar для токена/порта
-- [ ] T013 переводы `ru` для новых строк SecretBar и расширения
-- [ ] T014 README, сайт: установка и включение расширения, выдача доступа по сайтам, спарка токена
+- [x] T010 [US1] loopback-демон `helper/bridge/` (swiftc): `127.0.0.1` фиксированный порт, приём только с loopback, `POST /jar?as=NAME` с токеном → `secret cookie import` из stdin, иначе отказ
+- [x] T011 [US1] `secret cookie bridge token|start|stop`: токен и порт в `~/.local/state/secret/bridge.json` (0600); сборка демона в `install.sh`
+- [x] T012 [US1] веб-часть `app/extension/`: manifest v3 (право `cookies`), popup/JS — чтение `cookies.getAll` активного домена, сборка Netscape jar, POST на loopback с токеном
+- [x] T013 `tests/run.sh`: протокол демона по `curl` — верный токен сохраняет jar, неверный токен и не-loopback отклоняются
+- [x] T014 README, README.ru, сайт, `docs/claude-md-secrets.md`: демон, `bridge token`, установка расширения, доступ по сайтам, спарка токена
+
+## Этап 2b — Xcode-обёртка расширения (ручная сборка)
+
+- [ ] T015 Xcode-приложение расширения через `xcrun safari-web-extension-converter app/extension`, подпись, сборка в `app/`
+- [ ] T016 переводы `ru` строк расширения
 
 ## Ручные проверки
 
-- [ ] T015 ручная: включить расширение в Safari, спарить токен, на eservices.rs.ge нажать кнопку → jar с `ASP.NET_SessionId` в секрете; дата — при выполнении
-- [ ] T016 ручная: `secret run --mask --cookie-jar RSGE_SESSION --update -- curl ... MainPage.aspx` даёт 200; дата — при выполнении
-- [ ] T017 после приёмки: удалить мусорные секреты `RSGE_USER_TOKEN`, `RSGE_COOKIE_COMMITSTATUS`, `RSGE_COOKIE_ISEMP` (с подтверждением владельца)
+- [ ] T017 ручная: включить расширение в Safari, спарить токен, на eservices.rs.ge нажать кнопку → jar с `ASP.NET_SessionId` в секрете; дата — при выполнении
+- [ ] T018 ручная: `secret run --mask --cookie-jar RSGE_SESSION --update -- curl ... MainPage.aspx` даёт 200; дата — при выполнении
+- [ ] T019 после приёмки: удалить мусорные секреты `RSGE_USER_TOKEN`, `RSGE_COOKIE_COMMITSTATUS`, `RSGE_COOKIE_ISEMP` (с подтверждением владельца)

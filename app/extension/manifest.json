@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Secret Cookie Bridge",
+  "version": "0.1.0",
+  "description": "Send the cookies of the current site to the local secret command as a cookie jar.",
+  "permissions": ["cookies", "activeTab", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "action": {
+    "default_title": "Send cookies to secret",
+    "default_popup": "popup.html"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  }
+}

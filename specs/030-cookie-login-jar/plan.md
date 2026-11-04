@@ -36,22 +36,31 @@
 - `helper/login/` (хелпер WKWebView), команда `cmd_cookie login`, её usage, её сборка в
   `install.sh`, её тесты и упоминания в доках. Остальное из работы агента сохранить.
 
-## Этап 2: расширение Safari + мост
+## Этап 2: расширение Safari + loopback-демон
 
-### Расширение (Xcode-таргет в составе SecretBar)
-- Safari Web Extension, право `cookies` и доступ к хостам. Кнопка на панели: читает
-  `browser.cookies.getAll({domain})` активной вкладки (HttpOnly и session), собирает Netscape jar.
-- Шлёт jar на loopback SecretBar `POST http://127.0.0.1:PORT/jar` с заголовком токена и полем
-  `as=NAME` (имя секрета задаёт человек в настройках расширения или диалоге).
-- Подпись — как у SecretBar (Apple Development или ad-hoc). Без подписи Apple Development Safari
-  требует «Allow Unsigned Extensions» в меню Develop.
+Уточнение против первого наброска: мост — отдельный swiftc-демон, а не сервер внутри SecretBar.
+Так ядро тестируется по HTTP без GUI, а рабочий Xcode-проект SecretBar не трогается.
 
-### Мост в SecretBar
-- SecretBar поднимает loopback-сервер `127.0.0.1` на случайном порту, принимает только с loopback и
-  только с верным токеном спарки. Токен и порт SecretBar показывает в своём интерфейсе.
-- На валидный `POST /jar` SecretBar вызывает `secret cookie import --as NAME`, передавая jar в
-  stdin. Значение в SecretBar в память надолго не кладётся, в лог не пишется.
-- Токен спарки хранится в хранилище как секрет (`SECRETBAR_EXT_TOKEN`) или в UserDefaults SecretBar.
+### Loopback-демон (`helper/bridge/`, swiftc)
+- `secret-bridge`: слушает `127.0.0.1` на фиксированном порту, принимает только с loopback.
+- `POST /jar?as=NAME` с заголовком `X-Secret-Token`: при верном токене читает тело (Netscape jar) и
+  вызывает `secret cookie import --as NAME` через stdin. Иначе — 401/403, ничего не сохраняет.
+- Токен и порт лежат в `~/.local/state/secret/bridge.json` (0600). `secret cookie bridge token`
+  печатает токен для вставки в расширение; `secret cookie bridge start|stop` управляет демоном.
+- Тестируется в `tests/run.sh` обычным `curl` на loopback: верный токен сохраняет jar, неверный —
+  отказ, не-loopback — отказ.
+
+### Расширение Safari (веб-часть + Xcode-обёртка)
+- `app/extension/`: manifest v3, право `cookies` и доступ к хостам, popup. Кнопка читает
+  `browser.cookies.getAll` активного домена (HttpOnly и session), собирает Netscape jar, шлёт
+  `POST http://127.0.0.1:PORT/jar?as=NAME` с токеном из настроек расширения.
+- Xcode-обёртка приложения — через `xcrun safari-web-extension-converter app/extension` (отдельный
+  шаг со сборкой). Подпись Apple Development или ad-hoc; без неё — «Allow Unsigned Extensions» в
+  меню Develop Safari.
+
+### Ручные шаги (человек)
+- Включить расширение в Safari, дать доступ к cookie по сайтам, один раз вставить токен из `secret
+  cookie bridge token` в настройки расширения.
 
 ### Ручные шаги (человек)
 - Включить расширение в Safari, дать доступ к cookie по сайтам, один раз вставить токен из SecretBar

@@ -203,7 +203,7 @@ stored: SHOP_DB_PASSWORD</pre>
     <article class="card reveal tilt">
       <div class="card-ico">&#127850;</div>
       <h3>Session cookies and cookie jar</h3>
-      <p><code>secret cookie import --as SECRET</code> stores a cookie jar from stdin; a Safari extension (coming) will feed it with session-only cookies (<code>ASP.NET_SessionId</code>, <code>JSESSIONID</code>) from your real session. <code>secret run --cookie-jar SECRET --update</code> gives curl a temp jar in <code>$SECRET_COOKIE_JAR</code>, masked and deleted after the command.</p>
+      <p><code>secret cookie import --as SECRET</code> stores a cookie jar from stdin; a Safari extension sends it the session-only cookies (<code>ASP.NET_SessionId</code>, <code>JSESSIONID</code>) from your real session through a loopback daemon (<code>secret cookie bridge token|start|stop</code>, 127.0.0.1 only, pairing token; the Xcode wrapper of the extension comes next). <code>secret run --cookie-jar SECRET --update</code> gives curl a temp jar in <code>$SECRET_COOKIE_JAR</code>, masked and deleted after the command.</p>
     </article>
     <article class="card reveal tilt">
       <div class="card-ico">.env</div>
