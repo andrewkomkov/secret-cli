@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.7.0](https://github.com/andrewkomkov/secret-cli/compare/v1.6.1...v1.7.0) (2026-11-06)
+
+
+### Features
+
+* **cookie:** merge jars on import instead of overwriting ([ae36b81](https://github.com/andrewkomkov/secret-cli/commit/ae36b8129c7fe701ed58d2d2a92afa12f308cb5a))
+* **lease:** hold leased secrets across screen lock ([6d5b6f3](https://github.com/andrewkomkov/secret-cli/commit/6d5b6f3f6e029e1fae95af3aa9c8d92aa5ddc316))
+* **lease:** show the lease in SecretBar ([adf549f](https://github.com/andrewkomkov/secret-cli/commit/adf549fd21920f5b1922d26da680fa5ba3f53490))
+
 ## [1.6.1](https://github.com/andrewkomkov/secret-cli/compare/v1.6.0...v1.6.1) (2026-11-04)
 
 
