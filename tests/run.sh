@@ -625,6 +625,7 @@ else
   sv lock 2>/dev/null
   n="$(vcalls)"
   out="$(sv lease --for 6h V_B V_C 2>&1)"
+  echo "CIDBG:[$out]:END" >&2
   check "026: lease prints the end and the names" bash -c "[[ '$out' =~ ^leased\ until\ [0-9]{4}-[0-9]{2}-[0-9]{2}\ [0-9]{2}:[0-9]{2}:\ V_B,\ V_C\$ ]]"
   check "026: lease asks Touch ID once and names the names and the term" bash -c "[ \$(wc -l < '$SECRET_TEST_AUTH_LOG') -eq $((n + 1)) ] && tail -1 '$SECRET_TEST_AUTH_LOG' | grep -qx 'lease V_B, V_C for 6h'"
   out="$(sv lease status 2>&1)"
