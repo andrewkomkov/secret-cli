@@ -463,7 +463,8 @@ fi
 TS_DIR="$ROOT/build/test"
 TV="$TS_DIR/secret-vault-test"
 if [ ! -x "$TV" ] || [ "$(cat "$TS_DIR/secret-vault-test.src-sha256" 2>/dev/null)" != "$(shasum -a 256 "$ROOT/helper/store/main.swift" | cut -d' ' -f1)" ]; then
-  "$ROOT/helper/store/build.sh" Test "$TS_DIR" >/dev/null 2>&1 || rm -f "$TV"
+  "$ROOT/helper/store/build.sh" Test "$TS_DIR" 2>&1 | sed 's/^/STOREBUILD: /' || true
+  [ -x "$TV" ] || { echo "STOREBUILD: TV MISSING after build"; }
 fi
 if [ ! -x "$TV" ]; then
   echo "skip  017: no test build of the store helper (swiftc is needed)"
