@@ -333,7 +333,8 @@ final class Agent {
         case "status":
             let now = monotonic()
             expireLeases()
-            let l = leases.isEmpty ? "" : "\tlease=\(leases.count):\(epoch(leases.values.map { $0.end }.min() ?? now))"
+            let leaseEnd: Int = leases.isEmpty ? 0 : epoch(leases.values.map { $0.end }.min() ?? now)
+            let l = leases.isEmpty ? "" : "\tlease=\(leases.count):\(leaseEnd)"
             guard context != nil, now < deadline else { return ("ok\toff" + l, false) }
             return ("ok\tactive\t\(Int(deadline - now))\t\(Int(idle))\t\(Int(confirmedAt + maxSession - now))" + l, false)
         case "read" where f.count == 4:
@@ -369,7 +370,7 @@ final class Agent {
             expireLeases()
             do { try verifyLeases() } catch { return ("err\t1\t\(vaultMessage(error))", false) }
             return ("ok\t" + leases.sorted { $0.key.utf8.lexicographicallyPrecedes($1.key.utf8) }
-                .map { "\(hex($0.key)):\(epoch($0.value.end))" }.joined(separator: ","), false)
+                .map { (kv) -> String in let e: Int = epoch(kv.value.end); return "\(hex(kv.key)):\(e)" }.joined(separator: ","), false)
         case "revoke":
             leases.removeAll()
             return ("ok", false)
@@ -450,7 +451,8 @@ final class Agent {
             leases[n] = x
         }
         eventLog("lease: \(names.count) names, \(Int(end - monotonic()))s")
-        return ("ok\t\(epoch(end))", false)
+        let endEpoch: Int = epoch(end)
+        return ("ok\t\(endEpoch)", false)
     }
 
     // The grace ends, the leases stay: a locked screen, a sleep, the end of the idle time.
@@ -959,7 +961,7 @@ case "lease":
     let names = Array(args[4...])
     names.forEach(checkUserName)
     let a = request(["lease", noDialog ? "1" : "0", hex(args[2]), args[3], names.map { hex($0) }.joined(separator: ",")].joined(separator: "\t"))
-    print(a.first ?? "")
+    print(a.isEmpty ? "" : String(a[0]))
 
 case "lease-status":
     // NAME and the end per line; it does not start the agent and needs no Touch ID
