@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.1](https://github.com/andrewkomkov/secret-cli/compare/v1.7.0...v1.7.1) (2026-11-06)
+
+
+### Bug Fixes
+
+* **lease:** print the lease end without .first ambiguity ([cf0204f](https://github.com/andrewkomkov/secret-cli/commit/cf0204ff1637e20a9055c4d8c3faff3edd617021))
+
 ## [1.7.0](https://github.com/andrewkomkov/secret-cli/compare/v1.6.1...v1.7.0) (2026-11-06)
 
 
