@@ -463,8 +463,7 @@ fi
 TS_DIR="$ROOT/build/test"
 TV="$TS_DIR/secret-vault-test"
 if [ ! -x "$TV" ] || [ "$(cat "$TS_DIR/secret-vault-test.src-sha256" 2>/dev/null)" != "$(shasum -a 256 "$ROOT/helper/store/main.swift" | cut -d' ' -f1)" ]; then
-  "$ROOT/helper/store/build.sh" Test "$TS_DIR" 2>&1 | sed 's/^/STOREBUILD: /' || true
-  [ -x "$TV" ] || { echo "STOREBUILD: TV MISSING after build"; }
+  "$ROOT/helper/store/build.sh" Test "$TS_DIR" >/dev/null 2>&1 || rm -f "$TV"
 fi
 if [ ! -x "$TV" ]; then
   echo "skip  017: no test build of the store helper (swiftc is needed)"
@@ -626,7 +625,6 @@ else
   sv lock 2>/dev/null
   n="$(vcalls)"
   out="$(sv lease --for 6h V_B V_C 2>&1)"
-  echo "CIDBG3:{$out}" >&2
   check "026: lease prints the end and the names" bash -c "[[ '$out' =~ ^leased\ until\ 20[0-9][0-9]-[0-9]{2}-[0-9]{2}\ [0-9]{2}:[0-9]{2}:\ V_B,\ V_C\$ ]]"
   check "026: lease asks Touch ID once and names the names and the term" bash -c "[ \$(wc -l < '$SECRET_TEST_AUTH_LOG') -eq $((n + 1)) ] && tail -1 '$SECRET_TEST_AUTH_LOG' | grep -qx 'lease V_B, V_C for 6h'"
   out="$(sv lease status 2>&1)"

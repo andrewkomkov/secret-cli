@@ -961,8 +961,7 @@ case "lease":
     let names = Array(args[4...])
     names.forEach(checkUserName)
     let a = request(["lease", noDialog ? "1" : "0", hex(args[2]), args[3], names.map { hex($0) }.joined(separator: ",")].joined(separator: "\t"))
-    FileHandle.standardError.write(Data("LEASEDUMP n=\(a.count) [\(a.map { String($0) }.joined(separator: "\u{00a6}"))]\n".utf8))
-    print(a.first ?? "")
+    print(a.isEmpty ? "" : String(a[0]))
 
 case "lease-status":
     // NAME and the end per line; it does not start the agent and needs no Touch ID
