@@ -1155,6 +1155,45 @@ check "024: version" bash -c "'$SECRET' version | grep -qxE 'secret [0-9]+\.[0-9
 check "024: --version" test "$(s --version)" = "$(s version)"
 check "024: version is marked for release-please" grep -qE '^VERSION="[0-9.]+" # x-release-please-version$' "$SECRET"
 
+# --- 034: ls --ask with a stub of fm: it logs its arguments and stdin and prints a set answer
+FMD="$TMP/fm"; mkdir -p "$FMD"
+cat > "$FMD/fm" <<'STUB'
+#!/bin/sh
+d="$(dirname "$0")"
+echo "ARGS $*" >> "$d/log"
+cat >> "$d/log"
+n=$(cat "$d/count" 2>/dev/null || echo 0); n=$((n + 1)); echo $n > "$d/count"
+[ -f "$d/fail" ] && { printf '\033[31mThe model is not available\033[0m\n' >&2; exit 1; }
+if [ -f "$d/answer.$n" ]; then cat "$d/answer.$n"; else cat "$d/answer"; fi
+STUB
+chmod +x "$FMD/fm"
+fmreset() { rm -f "$FMD/log" "$FMD/count" "$FMD/fail" "$FMD"/answer*; }
+fa() { SECRET_FM="$FMD/fm" "$SECRET" "$@"; }
+s set -c 'shop: postgres password for the api' F_DB fm-secret-db 2>/dev/null
+s set -c 'billing: smtp mail' F_MAIL fm-secret-mail 2>/dev/null
+fmreset; printf '{"names": ["F_MAIL", "F_DB"]}' > "$FMD/answer"
+check "034: ls --ask prints the names of the answer in its order" test "$(fa ls --ask 'mail or db' | tr '\n' ' ')" = "F_MAIL F_DB "
+check "034: only the on-device model, no stream" grep -q -- '^ARGS respond -m system -g --no-stream --schema ' "$FMD/log"
+check "034: the model sees names, comments and the query" bash -c "grep -q '^F_DB: shop: postgres password for the api\$' '$FMD/log' && grep -q '^Query: mail or db\$' '$FMD/log'"
+check "034: the model sees no value" bash -c "! grep -q fm-secret '$FMD/log'"
+check "034: the query is not in the arguments" bash -c "! grep '^ARGS' '$FMD/log' | grep -q 'mail or db'"
+fmreset; printf '{"names": ["F_DB", "NOT_THERE", "F_DB"]}' > "$FMD/answer"
+check "034: a name not in the list is dropped, a repeat printed once" test "$(fa ls --ask db)" = F_DB
+check "034: ls --ask -l prints the comment" bash -c "SECRET_FM='$FMD/fm' '$SECRET' ls --ask db -l | grep -q '^F_DB  *shop: postgres password for the api\$'"
+check "034: ls -l --ask works too" bash -c "SECRET_FM='$FMD/fm' '$SECRET' ls -l --ask db | grep -q '^F_DB '"
+fmreset; printf '{"names": []}' > "$FMD/answer"
+check "034: nothing fits: exit 1, no output" bash -c "out=\$(SECRET_FM='$FMD/fm' '$SECRET' ls --ask kubernetes); [ \$? -eq 1 ] && [ -z \"\$out\" ]"
+fmreset; touch "$FMD/fail"
+check "034: the model fails: exit 2, its message without colors, the hint" bash -c "out=\$(SECRET_FM='$FMD/fm' '$SECRET' ls --ask db 2>&1); [ \$? -eq 2 ] && [[ \$out == *'the model failed: The model is not available; search without the model: secret ls -l | grep -i WORD'* ]] && [[ \$out != *\$'\\033'* ]]"
+check "034: no fm: exit 2 and the hint" bash -c "out=\$(SECRET_FM='$TMP/none' '$SECRET' ls --ask db 2>&1); [ \$? -eq 2 ] && [[ \$out == *'needs the on-device model'* ]]"
+check "034: --ask needs QUERY" bash -c "! SECRET_FM='$FMD/fm' '$SECRET' ls --ask 2>/dev/null"
+fmreset; printf '{"names": []}' > "$FMD/answer"
+for i in $(seq 1 41); do echo v | s set "F_N$i" 2>/dev/null; done
+fa ls --ask anything >/dev/null 2>&1
+check "034: a long list goes to the model in parts of 40" bash -c "[ \"\$(cat '$FMD/count')\" -ge 2 ] && [ \$(grep -c '^F_N' '$FMD/log') -eq 41 ]"
+for i in $(seq 1 41); do s rm "F_N$i" 2>/dev/null; done
+s rm F_DB 2>/dev/null; s rm F_MAIL 2>/dev/null
+
 # --- 030 T016: the extension strings have en and ru, and every key in use exists
 EXT="$ROOT/app/extension"
 ext_keys() { grep -oE '^  "[A-Za-z]+": \{' "$1" | cut -d'"' -f2 | sort; }
