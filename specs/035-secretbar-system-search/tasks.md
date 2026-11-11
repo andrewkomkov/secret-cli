@@ -8,5 +8,5 @@
 - [x] T004 2026-11-11: новых строк интерфейса нет. Название действия даёт схема `.system.search`, `Localizable.xcstrings` не менялся
 - [x] T005 2026-11-11 `app/build.sh` на Xcode 27.2 собирает SecretBar, в `Metadata.appintents` есть `SearchSecretsIntent` и `system.search`; `tests/run.sh` 560 из 560
 - [x] T006 README, README.ru: поиск SecretBar из Siri и Spotlight
-- [ ] T007 CI зелёный на `macos-15` и `macos-26`
+- [x] T007 2026-11-11 CI PR #13 зелёный на `macos-15` и `macos-26` (после фикса макроса для Xcode 16)
 - [ ] T008 ручная SC-002. Дата — при выполнении
