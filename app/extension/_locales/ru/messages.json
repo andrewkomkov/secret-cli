@@ -1,0 +1,93 @@
+{
+  "extName": {
+    "message": "Secret Cookie Bridge"
+  },
+  "extDescription": {
+    "message": "Отправляет cookie текущего сайта в локальную команду secret как cookie jar."
+  },
+  "actionTitle": {
+    "message": "Отправить cookie в secret"
+  },
+  "sendButton": {
+    "message": "Отправить cookie в secret"
+  },
+  "settingsLink": {
+    "message": "Настройки"
+  },
+  "settingsTitle": {
+    "message": "Secret Cookie Bridge: настройки"
+  },
+  "tokenLabel": {
+    "message": "Токен (из $CMD$)",
+    "placeholders": {
+      "cmd": {
+        "content": "$1"
+      }
+    }
+  },
+  "nameLabel": {
+    "message": "Имя секрета (UPPER_SNAKE_CASE)"
+  },
+  "portLabel": {
+    "message": "Порт"
+  },
+  "saveButton": {
+    "message": "Сохранить"
+  },
+  "errNoConfig": {
+    "message": "Сначала укажите токен и имя секрета в настройках."
+  },
+  "errNoPage": {
+    "message": "Сначала откройте веб-страницу."
+  },
+  "errNoCookies": {
+    "message": "Для $HOST$ нет cookie. Проверьте доступ расширения к сайту в Safari.",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "stored": {
+    "message": "Сохранено cookie: $COUNT$, сайт $HOST$, секрет $NAME$.",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "host": {
+        "content": "$2"
+      },
+      "name": {
+        "content": "$3"
+      }
+    }
+  },
+  "errRefused": {
+    "message": "Демон отказал: HTTP $STATUS$ $TEXT$",
+    "placeholders": {
+      "status": {
+        "content": "$1"
+      },
+      "text": {
+        "content": "$2"
+      }
+    }
+  },
+  "errFailed": {
+    "message": "Ошибка: $MSG$\nДемон запущен? (secret cookie bridge start)",
+    "placeholders": {
+      "msg": {
+        "content": "$1"
+      }
+    }
+  },
+  "errName": {
+    "message": "Имя должно соответствовать [A-Za-z_][A-Za-z0-9_.-]*."
+  },
+  "errPort": {
+    "message": "Порт должен быть от 1 до 65535."
+  },
+  "saved": {
+    "message": "Сохранено."
+  }
+}

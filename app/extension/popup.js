@@ -27,21 +27,21 @@ async function send() {
   try {
     const cfg = await browser.storage.local.get(['token', 'name', 'port']);
     if (!cfg.token || !cfg.name) {
-      show('Set the token and the secret name in Settings first.', false);
+      show(t('errNoConfig'), false);
       return;
     }
     const port = cfg.port || 17659;
     const tabs = await browser.tabs.query({ active: true, currentWindow: true });
     const tab = tabs[0];
     if (!tab || !tab.url || !/^https?:/.test(tab.url)) {
-      show('Open a web page first.', false);
+      show(t('errNoPage'), false);
       return;
     }
     const host = new URL(tab.url).hostname;
     // A domain match includes the subdomains and the parent-domain cookies of the host.
     const cookies = await browser.cookies.getAll({ domain: host });
     if (!cookies.length) {
-      show('No cookies for ' + host + '. Check the site access for the extension in Safari.', false);
+      show(t('errNoCookies', [host]), false);
       return;
     }
     const res = await fetch('http://127.0.0.1:' + port + '/jar?as=' + encodeURIComponent(cfg.name), {
@@ -50,12 +50,12 @@ async function send() {
       body: buildJar(cookies)
     });
     if (res.ok) {
-      show('Stored ' + cookies.length + ' cookies of ' + host + ' as ' + cfg.name + '.', true);
+      show(t('stored', [String(cookies.length), host, cfg.name]), true);
     } else {
-      show('The daemon refused: HTTP ' + res.status + ' ' + (await res.text()).trim(), false);
+      show(t('errRefused', [String(res.status), (await res.text()).trim()]), false);
     }
   } catch (e) {
-    show('Failed: ' + e.message + '\nIs the daemon running? (secret cookie bridge start)', false);
+    show(t('errFailed', [e.message]), false);
   } finally {
     btn.disabled = false;
   }

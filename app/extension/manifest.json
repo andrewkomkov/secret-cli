@@ -1,10 +1,16 @@
 {
   "manifest_version": 3,
-  "name": "Secret Cookie Bridge",
+  "name": "__MSG_extName__",
   "version": "0.1.0",
-  "description": "Send the cookies of the current site to the local secret command as a cookie jar.",
-  "permissions": ["cookies", "activeTab", "storage"],
-  "host_permissions": ["<all_urls>"],
+  "description": "__MSG_extDescription__",
+  "permissions": [
+    "cookies",
+    "activeTab",
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
   "icons": {
     "48": "icons/icon-48.png",
     "96": "icons/icon-96.png",
@@ -13,7 +19,7 @@
     "512": "icons/icon-512.png"
   },
   "action": {
-    "default_title": "Send cookies to secret",
+    "default_title": "__MSG_actionTitle__",
     "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon-16.png",
@@ -23,5 +29,6 @@
   "options_ui": {
     "page": "options.html",
     "open_in_tab": true
-  }
+  },
+  "default_locale": "en"
 }

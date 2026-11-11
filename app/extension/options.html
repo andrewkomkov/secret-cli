@@ -1,5 +1,5 @@
 <!doctype html>
-<html>
+<html data-i18n-title="settingsTitle">
 <head>
   <meta charset="utf-8">
   <title>Secret Cookie Bridge: settings</title>
@@ -12,18 +12,19 @@
   </style>
 </head>
 <body>
-  <h1>Secret Cookie Bridge</h1>
-  <label>Token (from <code>secret cookie bridge token</code>)
+  <h1 data-i18n="extName">Secret Cookie Bridge</h1>
+  <label><span id="tokenLabel">Token (from secret cookie bridge token)</span>
     <input id="token" type="password" autocomplete="off">
   </label>
-  <label>Secret name (UPPER_SNAKE_CASE)
+  <label><span data-i18n="nameLabel">Secret name (UPPER_SNAKE_CASE)</span>
     <input id="name" type="text" placeholder="SHOP_SESSION">
   </label>
-  <label>Port
+  <label><span data-i18n="portLabel">Port</span>
     <input id="port" type="number" min="1" max="65535" value="17659">
   </label>
-  <button id="save">Save</button>
+  <button id="save" data-i18n="saveButton">Save</button>
   <div id="status"></div>
+  <script src="i18n.js"></script>
   <script src="options.js"></script>
 </body>
 </html>
