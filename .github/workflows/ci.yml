@@ -6,8 +6,7 @@ on:
   pull_request:
   workflow_dispatch:
 
-permissions:
-  contents: read
+permissions: {}
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -15,11 +14,20 @@ concurrency:
 
 jobs:
   test:
-    name: tests on macOS
-    runs-on: macos-15
+    name: tests on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # macos-15 has the oldest Swift we support; macos-26 is close to the owner's toolchain.
+        os: [macos-15, macos-26]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 30
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Syntax
         run: |
@@ -29,6 +37,12 @@ jobs:
           perl -c hooks/claude-pretooluse.sh
           zsh -n completions/_secret
           node --check site/main.js
+
+      - name: shellcheck
+        run: |
+          command -v shellcheck >/dev/null || brew install shellcheck
+          shellcheck -S warning bin/secret install.sh hooks/install-claude.sh \
+            helper/*/build.sh app/build.sh app/extension/build.sh
 
       - name: Toolchain
         run: |

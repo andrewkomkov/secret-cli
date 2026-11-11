@@ -496,7 +496,11 @@ Keychain Access не меняются. Touch ID проверяет тестов�
 программный ключ и ключ файла в каталоге прогона, Secure Enclave и keychain она не трогает.
 Заблокированный keychain
 проверяется через helper без системного окна. Окна (`ask`, разблокировка) и настоящий Touch ID
-проверяются руками.
+проверяются руками. CI запускает те же тесты на macOS 15 и macOS 26 для каждого push и PR.
+
+**Проверка релиза.** У каждого tarball релиза есть attestation происхождения сборки:
+`gh attestation verify secret-X.Y.Z.tar.gz -R andrewkomkov/secret-cli`. Об уязвимости пишите по
+[SECURITY.md](SECURITY.md).
 
 Изменения идут через spec-kit: `specs/NNN-*/` со `spec.md`, `plan.md`, `tasks.md`. Правила —
 в `.specify/memory/constitution.md`.
