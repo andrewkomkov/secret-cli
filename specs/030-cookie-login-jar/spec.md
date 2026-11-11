@@ -6,7 +6,7 @@
 
 **Status**: Draft 2026-11-04 (вариант B — расширение Safari; вариант A с окном WKWebView отклонён)
 
-**Input**: Запрос соседней сессии (случай 2026-11-04): кабинет eservices.rs.ge (ASP.NET WebForms)
+**Input**: Запрос соседней сессии (случай 2026-11-04): кабинет portal.example.org (ASP.NET WebForms)
 держит сессию на `ASP.NET_SessionId` — HttpOnly session cookie без срока. Safari его в
 `Cookies.binarycookies` не пишет, через `document.cookie` его читать нельзя (HttpOnly). `secret
 cookie pull` берёт только постоянные cookie, и запрос к `MainPage.aspx` даёт 302 на `Login.aspx`.
@@ -96,11 +96,11 @@ cookie pull` берёт только постоянные cookie, и запро�
 
 ## Success Criteria *(mandatory)*
 
-- **SC-001**: на вкладке eservices.rs.ge кнопка расширения сохраняет jar с `ASP.NET_SessionId`
+- **SC-001**: на вкладке portal.example.org кнопка расширения сохраняет jar с `ASP.NET_SessionId`
   через SecretBar и `secret cookie import`.
-- **SC-002**: `secret run --mask --cookie-jar RSGE_SESSION --update -- curl -s -o /dev/null -w
+- **SC-002**: `secret run --mask --cookie-jar TAX_SESSION --update -- curl -s -o /dev/null -w
   '%{http_code}' -b "$SECRET_COOKIE_JAR" -c "$SECRET_COOKIE_JAR"
-  https://eservices.rs.ge/MainPage.aspx` даёт `200`, а не 302.
+  https://portal.example.org/MainPage.aspx` даёт `200`, а не 302.
 - **SC-003**: ни одна команда не печатает значения. Тесты покрывают формат jar, round-trip
   `--update`, маску по cookie, правило коротких значений, hook и протокол `import` (без живого
   расширения).
