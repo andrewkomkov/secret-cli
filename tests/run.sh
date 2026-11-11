@@ -763,6 +763,44 @@ else
   sv touchid grace 1800 2>/dev/null
 
   check "017: a changed key without a file gives a new store" bash -c "S=$SECRET_TEST_STATE/vault-other$$; printf junk > \$S.key; printf '%s %s - -\n' 41 76 | SECRET_TEST_STORE=other$$ '$TV' write && SECRET_TEST_STORE=other$$ '$TV' list | grep -q '^A'; rc=\$?; SECRET_TEST_STORE=other$$ '$TV' wipe; [ \$rc -eq 0 ]"
+  # --- 033: post-quantum store (ML-KEM-768 + P-256). The store of this run is new, so it is
+  # post-quantum already, and every 017/026 check above ran on v2 values. A v1 store for the
+  # upgrade lives in its own state directory: the agent socket is one per directory.
+  if [ "$("$TV" pq-status 2>/dev/null)" = unsupported ]; then
+    echo "skip  033: no ML-KEM in this toolchain or macOS (needs the macOS 26 SDK)"
+  else
+    check "033: a new store is post-quantum" bash -c "$SV; sv touchid status | grep -qx 'post-quantum: on (P-256 + ML-KEM-768)'"
+    mkdir -p "$TMP/pq"
+    pqs() { SECRET_TEST_STATE="$TMP/pq" SECRET_TEST_STORE="pq033" SECRET_KEYCHAIN="$KC5" SECRET_VAULT_HELPER="$TV" SECRET_STORE_MODE="$TMP/v-mode" SECRET_NO_DIALOG= "$SECRET" "$@"; }
+    PQS="$(declare -f pqs); TV='$TV' TMP='$TMP' KC5='$KC5' SECRET='$SECRET'"
+    echo pq-one | SECRET_TEST_NO_PQ=1 pqs set -c first -x 2032-02-02 P_A 2>/dev/null
+    echo pq-two | SECRET_TEST_NO_PQ=1 pqs set P_B 2>/dev/null
+    check "033: SECRET_TEST_NO_PQ=1 gives a v1 store" bash -c "$PQS; pqs touchid status | grep -qx 'post-quantum: off (secret touchid pq)'"
+    check "033: a v1 store reads as before" test "$(pqs get P_B)" = pq-two
+    pqs lease --for 1h P_A >/dev/null 2>&1
+    echo deny > "$SECRET_TEST_AUTH"
+    check "033: pq needs a confirmation" bash -c "$PQS; ! pqs touchid pq 2>/dev/null && pqs touchid status | grep -qx 'post-quantum: off (secret touchid pq)'"
+    echo allow > "$SECRET_TEST_AUTH"
+    n="$(vcalls)"
+    check "033: pq seals the old values again" bash -c "$PQS; pqs touchid pq 2>&1 | grep -qx 'touchid pq: 2 values sealed again, all 2 values are post-quantum'"
+    check "033: pq asks Touch ID once" test "$(vcalls)" = "$((n + 1))"
+    check "033: status after pq" bash -c "$PQS; pqs touchid status | grep -qx 'post-quantum: on (P-256 + ML-KEM-768)'"
+    check "033: names, comments and expiry kept" bash -c "$PQS; pqs ls -l | grep -q '^P_A  *2032-02-02 first\$'"
+    check "033: the lease survives pq" bash -c "$PQS; pqs lease status | grep -q '^P_A'"
+    pqs lease --revoke >/dev/null 2>&1; pqs lock 2>/dev/null
+    check "033: values after pq" bash -c "$PQS; [ \"\$(pqs get P_A)\" = pq-one ] && [ \"\$(pqs get P_B)\" = pq-two ]"
+    n="$(vcalls)"
+    check "033: a second pq changes nothing" bash -c "$PQS; pqs touchid pq 2>&1 | grep -qx 'touchid pq: all 2 values are post-quantum'"
+    check "033: a second pq asks nothing" test "$(vcalls)" = "$n"
+    echo pq-three | pqs set P_C 2>/dev/null
+    check "033: a new value after pq is post-quantum" bash -c "$PQS; pqs touchid status | grep -qx 'post-quantum: on (P-256 + ML-KEM-768)' && [ \"\$(pqs get P_C)\" = pq-three ]"
+    rm "$TMP/pq/vault-pq033.key"; pqs lock 2>/dev/null
+    check "033: repair keeps the ML-KEM key" bash -c "$PQS; pqs touchid repair >/dev/null 2>&1 && [ \"\$(pqs get P_A)\" = pq-one ] && pqs touchid status | grep -qx 'post-quantum: on (P-256 + ML-KEM-768)'"
+    check "033: pq prints no value" bash -c "$PQS; out=\$(pqs touchid pq 2>&1); [[ \$out != *pq-one* && \$out != *pq-two* ]]"
+    pqs lock 2>/dev/null
+    SECRET_TEST_STATE="$TMP/pq" SECRET_TEST_STORE="pq033" "$TV" wipe 2>/dev/null
+  fi
+
   check "017: a release helper is never a test helper" bash -c "out=\$(SECRET_KEYCHAIN='$KC5' SECRET_VAULT_HELPER='$ROOT/build/secret-vault' SECRET_STORE_MODE='$TMP/v-mode' SECRET_PBCOPY='cat > $TMP/leak' '$SECRET' touchid status 2>&1); [[ \$out != *'secure enclave'* ]]"
   check "013: a missing test keychain enables no override" bash -c "out=\$(SECRET_KEYCHAIN='$TMP/none.keychain-db' SECRET_VAULT_HELPER='$TV' SECRET_STORE_MODE='$TMP/v-mode' '$SECRET' ls 2>&1); [ \$? -ne 0 ] && [[ \$out == *'keychain not found'* ]]"
   printf '#!/bin/sh\n[ "$1" = kind ] && { echo test; exit 0; }\necho "secret-vault: the store file is damaged or not ours: x" >&2\nexit 1\n' > "$TMP/bad-store"; chmod +x "$TMP/bad-store"

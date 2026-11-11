@@ -55,7 +55,7 @@ func usage() -> Never {
     fail("""
         usage: secret-vault list | has NAME | read REASON NAME... | write | attrs REASON NAME COMMENT EXPIRY
                delete NAME... | policy init [N] | policy show | policy grace N | lock | grace-status
-               ping | kind | clip | status | repair
+               ping | kind | clip | status | repair | pq | pq-status
                lease REASON SECONDS NAME... | lease-status | lease-revoke
         """, 64)
 }
@@ -277,7 +277,7 @@ final class Agent {
         if let (d, k, _) = try? readDoc() {
             for it in d.items {
                 valueTouch("read " + it.n)
-                if let v = try? unseal(it.v, it.n, k.se, c) { cache[it.n] = (Data(it.r.utf8), v) }
+                if let v = try? unseal(it.v, it.n, k.se, k.kse, c) { cache[it.n] = (Data(it.r.utf8), v) }
             }
         }
         eventLog("preload: \(cache.count) values")
@@ -306,7 +306,7 @@ final class Agent {
         guard let c = context else { return .failure(AgentError(code: 1, message: "no context")) }
         do {
             valueTouch("read " + name)
-            let v = try unseal(item.v, name, k.se, c)
+            let v = try unseal(item.v, name, k.se, k.kse, c)
             cache[name] = (ref, v)
             return .success(v)
         } catch { return .failure(AgentError(code: 1, message: "cannot read \(name): \(error)")) }
@@ -440,7 +440,7 @@ final class Agent {
             for n in names {
                 guard let item = d.items.first(where: { $0.n == n }) else { return ("err\t3\tnot found: \(n)", false) }
                 valueTouch("read " + n)
-                fresh[n] = Lease(ref: Data(item.r.utf8), value: try unseal(item.v, n, k.se, c), end: end)
+                fresh[n] = Lease(ref: Data(item.r.utf8), value: try unseal(item.v, n, k.se, k.kse, c), end: end)
             }
         } catch { return ("err\t1\tcannot read the secrets: \(error)", false) }
         expireLeases()
@@ -579,6 +579,8 @@ struct VaultHeader: Codable {
     var pub: Data    // x963 public key of the Secure Enclave key
     var se: Data     // the wrapped Secure Enclave key (raw software key in the test build)
     var wm: Data     // ECIES of the file key, for repair
+    var kpub: Data?  // ML-KEM-768 public key (033); nil: a store without post-quantum keys
+    var kse: Data?   // the wrapped Secure Enclave ML-KEM key (the seed in the test build)
 }
 
 // The keychain item.
@@ -587,10 +589,12 @@ struct VaultKeys: Codable {
     var pub: Data
     var se: Data
     var grace: Int?
+    var kpub: Data?
+    var kse: Data?
     var fileKey: SymmetricKey { SymmetricKey(data: m) }
 }
 
-enum VaultError: Error { case damaged(String), missingKey, keyChanged, keychain(OSStatus), noPresence }
+enum VaultError: Error { case damaged(String), missingKey, keyChanged, keychain(OSStatus), noPresence, noPQ }
 
 func vaultMessage(_ e: Error) -> String {
     switch e {
@@ -599,6 +603,7 @@ func vaultMessage(_ e: Error) -> String {
     case VaultError.keyChanged: return "another program changed the key item of the store, or the helper lost its signature: secret touchid repair rebuilds it (Touch ID)"
     case VaultError.keychain(let r): return "cannot use the key item of the store: \(r)"
     case VaultError.noPresence: return "the Secure Enclave key of the store works without Touch ID: it is not ours"
+    case VaultError.noPQ: return "this helper cannot open post-quantum values: rebuild it on macOS 26 or later (./install.sh)"
     default: return "\(e)"
     }
 }
@@ -622,6 +627,28 @@ func newPrivateKey() throws -> (pub: Data, se: Data) {
 
 func sharedSecret(_ se: Data, _ eph: P256.KeyAgreement.PublicKey, _ ctx: LAContext?) throws -> SharedSecret {
     try P256.KeyAgreement.PrivateKey(rawRepresentation: se).sharedSecretFromKeyAgreement(with: eph)
+}
+
+// A software ML-KEM key; SECRET_TEST_NO_PQ=1 makes a store without it, to test the upgrade.
+func pqWanted() -> Bool { testEnv["SECRET_TEST_NO_PQ"] != "1" && pqSupported() }
+
+func newKemKey() throws -> (pub: Data, se: Data) {
+    #if compiler(>=6.2)
+    if #available(macOS 26, *) {
+        let k = try MLKEM768.PrivateKey()
+        return (k.publicKey.rawRepresentation, k.seedRepresentation)
+    }
+    #endif
+    throw VaultError.noPQ
+}
+
+func kemShared(_ kse: Data, _ ct: Data, _ ctx: LAContext?) throws -> SymmetricKey {
+    #if compiler(>=6.2)
+    if #available(macOS 26, *) {
+        return try MLKEM768.PrivateKey(seedRepresentation: kse, publicKey: nil).decapsulate(ct)
+    }
+    #endif
+    throw VaultError.noPQ
 }
 #else
 func keyQuery(_ extra: [String: Any] = [:]) -> CFDictionary {
@@ -679,44 +706,140 @@ func sharedSecret(_ se: Data, _ eph: P256.KeyAgreement.PublicKey, _ ctx: LAConte
     try SecureEnclave.P256.KeyAgreement.PrivateKey(dataRepresentation: se, authenticationContext: ctx)
         .sharedSecretFromKeyAgreement(with: eph)
 }
+
+func pqWanted() -> Bool { pqSupported() }
+
+// The ML-KEM-768 key in the Secure Enclave, with .userPresence as the P-256 key (033).
+func newKemKey() throws -> (pub: Data, se: Data) {
+    #if compiler(>=6.2)
+    if #available(macOS 26, *) {
+        var error: Unmanaged<CFError>?
+        guard let ac = SecAccessControlCreateWithFlags(nil, kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+                                                       [.privateKeyUsage, .userPresence], &error) else {
+            throw VaultError.keychain(errSecParam)
+        }
+        let k = try SecureEnclave.MLKEM768.PrivateKey(accessControl: ac)
+        return (k.publicKey.rawRepresentation, k.dataRepresentation)
+    }
+    #endif
+    throw VaultError.noPQ
+}
+
+func kemShared(_ kse: Data, _ ct: Data, _ ctx: LAContext?) throws -> SymmetricKey {
+    #if compiler(>=6.2)
+    if #available(macOS 26, *) {
+        return try SecureEnclave.MLKEM768.PrivateKey(dataRepresentation: kse, authenticationContext: ctx).decapsulate(ct)
+    }
+    #endif
+    throw VaultError.noPQ
+}
 #endif
+
+// ML-KEM-768 needs the macOS 26 SDK (Swift 6.2) to build and macOS 26 to run (033).
+func pqSupported() -> Bool {
+    #if compiler(>=6.2)
+    if #available(macOS 26, *) { return true }
+    #endif
+    return false
+}
+
+func kemEncapsulate(_ kpub: Data) throws -> (shared: SymmetricKey, ct: Data) {
+    #if compiler(>=6.2)
+    if #available(macOS 26, *) {
+        let r = try MLKEM768.PublicKey(rawRepresentation: kpub).encapsulate()
+        return (r.sharedSecret, r.encapsulated)
+    }
+    #endif
+    throw VaultError.noPQ
+}
 
 func vaultKey(_ secret: SharedSecret, _ eph: P256.KeyAgreement.PublicKey, _ name: String) -> SymmetricKey {
     secret.hkdfDerivedSymmetricKey(using: SHA256.self, salt: eph.x963Representation,
                                    sharedInfo: Data(("secret-cli vault v1|" + name).utf8), outputByteCount: 32)
 }
 
-// ECIES: an ephemeral key, ECDH with the Secure Enclave public key, HKDF bound to the name.
-func seal(_ plain: Data, _ name: String, _ pub: Data) throws -> Data {
+let kemCTLength = 1088  // ML-KEM-768 ciphertext
+let v2Mark: UInt8 = 2   // a v1 value starts with 0x04, the first byte of the x963 key
+
+// Both shared secrets go into one HKDF: the value needs the P-256 and the ML-KEM key (033).
+func hybridKey(_ ecdh: SharedSecret, _ kem: SymmetricKey, _ eph: P256.KeyAgreement.PublicKey, _ ct: Data,
+               _ name: String) -> SymmetricKey {
+    let ikm = ecdh.withUnsafeBytes { Data($0) } + kem.withUnsafeBytes { Data($0) }
+    return HKDF<SHA256>.deriveKey(inputKeyMaterial: SymmetricKey(data: ikm), salt: eph.x963Representation + ct,
+                                  info: Data(("secret-cli vault v2|" + name).utf8), outputByteCount: 32)
+}
+
+// v1, ECIES: an ephemeral key, ECDH with the Secure Enclave public key, HKDF bound to the name.
+// v2 with KPUB: 0x02, the ML-KEM-768 ciphertext, the ephemeral key, AES-GCM under hybridKey.
+func seal(_ plain: Data, _ name: String, _ pub: Data, _ kpub: Data?) throws -> Data {
     let eph = P256.KeyAgreement.PrivateKey()
     let s = try eph.sharedSecretFromKeyAgreement(with: try P256.KeyAgreement.PublicKey(x963Representation: pub))
-    guard let box = try AES.GCM.seal(plain, using: vaultKey(s, eph.publicKey, name)).combined else { throw VaultError.damaged("seal") }
-    return eph.publicKey.x963Representation + box
+    guard let kpub = kpub else {
+        guard let box = try AES.GCM.seal(plain, using: vaultKey(s, eph.publicKey, name)).combined else { throw VaultError.damaged("seal") }
+        return eph.publicKey.x963Representation + box
+    }
+    let (kem, ct) = try kemEncapsulate(kpub)
+    guard ct.count == kemCTLength,
+          let box = try AES.GCM.seal(plain, using: hybridKey(s, kem, eph.publicKey, ct, name)).combined else {
+        throw VaultError.damaged("seal")
+    }
+    return Data([v2Mark]) + ct + eph.publicKey.x963Representation + box
+}
+
+func isV2(_ blob: Data) -> Bool { blob.first == v2Mark }
+
+// The ephemeral key and, for v2, the ML-KEM ciphertext; then the sealed box.
+func parts(_ blob: Data, _ name: String) throws -> (eph: P256.KeyAgreement.PublicKey, ct: Data?, box: Data) {
+    let b = Data(blob)
+    if isV2(b) {
+        let e = 1 + kemCTLength
+        guard b.count > e + 65 + 28 else { throw VaultError.damaged(name) }
+        return (try P256.KeyAgreement.PublicKey(x963Representation: b.subdata(in: e..<(e + 65))),
+                b.subdata(in: 1..<e), b.subdata(in: (e + 65)..<b.count))
+    }
+    guard b.count > 65 + 28 else { throw VaultError.damaged(name) }
+    return (try P256.KeyAgreement.PublicKey(x963Representation: b.subdata(in: 0..<65)), nil, b.subdata(in: 65..<b.count))
 }
 
 // Needs a context that passed .userPresence, else the system asks for Touch ID here.
-func unseal(_ blob: Data, _ name: String, _ se: Data, _ ctx: LAContext?) throws -> Data {
-    guard blob.count > 65 + 28 else { throw VaultError.damaged(name) }
-    let eph = try P256.KeyAgreement.PublicKey(x963Representation: blob.prefix(65))
+func unseal(_ blob: Data, _ name: String, _ se: Data, _ kse: Data?, _ ctx: LAContext?) throws -> Data {
+    let (eph, ct, box) = try parts(blob, name)
+    guard let ct = ct else {
+        let s = try sharedSecret(se, eph, ctx)
+        return try AES.GCM.open(AES.GCM.SealedBox(combined: box), using: vaultKey(s, eph, name))
+    }
+    guard pqSupported() else { throw VaultError.noPQ }
+    guard let kse = kse else { throw VaultError.damaged("a post-quantum value, but no ML-KEM key: \(name)") }
     let s = try sharedSecret(se, eph, ctx)
-    return try AES.GCM.open(AES.GCM.SealedBox(combined: blob.dropFirst(65)), using: vaultKey(s, eph, name))
+    let kem = try kemShared(kse, ct, ctx)
+    return try AES.GCM.open(AES.GCM.SealedBox(combined: box), using: hybridKey(s, kem, eph, ct, name))
 }
 
 // A key that works with a context that cannot ask has no .userPresence: this helper did not make it.
-// Only "interaction required" passes; any other result fails closed.
-func requirePresence(_ sealed: Data, _ name: String, _ se: Data) throws {
+// Only "interaction required" passes; any other result fails closed. Both keys of a v2 value.
+func requirePresence(_ sealed: Data, _ name: String, _ se: Data, _ kse: Data?) throws {
     #if !SECRET_TEST
     let c = LAContext()
     c.interactionNotAllowed = true
+    let (eph, ct, _) = try parts(sealed, name)
+    try presenceNeeded { _ = try sharedSecret(se, eph, c) }
+    if let ct = ct {
+        guard pqSupported() else { throw VaultError.noPQ }
+        guard let kse = kse else { throw VaultError.damaged("a post-quantum value, but no ML-KEM key: \(name)") }
+        try presenceNeeded { _ = try kemShared(kse, ct, c) }
+    }
+    #endif
+}
+
+func presenceNeeded(_ op: () throws -> Void) throws {
     do {
-        _ = try unseal(sealed, name, se, c)
+        try op()
     } catch let e as NSError where e.domain == LAErrorDomain && e.code == LAError.notInteractive.rawValue {
         return
     } catch {
         throw VaultError.damaged("cannot check the Secure Enclave key: \(error)")
     }
     throw VaultError.noPresence
-    #endif
 }
 
 var loadedKeys: VaultKeys?
@@ -771,9 +894,16 @@ func openPayload(_ sealed: Data, _ aad: Data, _ fileKey: SymmetricKey) throws ->
 // The store, or nil when there is no file yet.
 func readDoc() throws -> (VaultDoc, VaultKeys, VaultHeader)? {
     guard let blob = FileManager.default.contents(atPath: vaultPath) else { return nil }
-    guard let k = try keys() else { throw VaultError.missingKey }
+    guard var k = try keys() else { throw VaultError.missingKey }
     let (h, aad, sealed) = try splitFile(blob)
     guard h.pub == k.pub, h.se == k.se else { throw VaultError.damaged("another key") }
+    if h.kpub != k.kpub || h.kse != k.kse {
+        // touchid pq writes the file first, then the key item; an agent keeps an old copy of the
+        // item. The file key authenticates the header, so its ML-KEM key is ours.
+        guard k.kpub == nil, k.kse == nil, h.kpub != nil, h.kse != nil else { throw VaultError.damaged("another ML-KEM key") }
+        k.kpub = h.kpub
+        k.kse = h.kse
+    }
     return (try openPayload(sealed, aad, k.fileKey), k, h)
 }
 
@@ -827,15 +957,16 @@ func mutate(_ change: (inout VaultDoc, VaultKeys) throws -> Void) {
             } else if let ok = try keysWithoutFile() {
                 // no file, but keys: keep them, an old .prev still opens
                 k = ok
-                h = VaultHeader(pub: k.pub, se: k.se, wm: try seal(k.m, fileKeyName, k.pub))
-                d = VaultDoc(check: try seal(checkText, checkName, k.pub), items: [])
+                h = VaultHeader(pub: k.pub, se: k.se, wm: try seal(k.m, fileKeyName, k.pub, k.kpub), kpub: k.kpub, kse: k.kse)
+                d = VaultDoc(check: try seal(checkText, checkName, k.pub, k.kpub), items: [])
             } else {
                 let (pub, se) = try newPrivateKey()
+                let kem = pqWanted() ? try newKemKey() : nil
                 let m = SymmetricKey(size: .bits256).withUnsafeBytes { Data($0) }
-                k = VaultKeys(m: m, pub: pub, se: se, grace: nil)
+                k = VaultKeys(m: m, pub: pub, se: se, grace: nil, kpub: kem?.pub, kse: kem?.se)
                 try storeKeys(k, new: true)
-                h = VaultHeader(pub: pub, se: se, wm: try seal(m, fileKeyName, pub))
-                d = VaultDoc(check: try seal(checkText, checkName, pub), items: [])
+                h = VaultHeader(pub: pub, se: se, wm: try seal(m, fileKeyName, pub, k.kpub), kpub: k.kpub, kse: k.kse)
+                d = VaultDoc(check: try seal(checkText, checkName, pub, k.kpub), items: [])
             }
             try change(&d, k)
             writeFile(try joinFile(h, d, k.fileKey))
@@ -869,11 +1000,11 @@ func confirmedContext(_ reason: String) -> Result<LAContext, AgentError> {
     let found: (VaultDoc, VaultKeys, VaultHeader)?
     do { found = try readDoc() } catch { return .failure(AgentError(code: 1, message: vaultMessage(error))) }
     guard let (d, k, _) = found else { return .failure(AgentError(code: 3, message: "the store is empty")) }
-    do { try requirePresence(d.check, checkName, k.se) } catch { return .failure(AgentError(code: 1, message: vaultMessage(error))) }
+    do { try requirePresence(d.check, checkName, k.se, k.kse) } catch { return .failure(AgentError(code: 1, message: vaultMessage(error))) }
     let t0 = Date()
     eventLog("touch id asked: \(reason)")
     do {
-        guard try unseal(d.check, checkName, k.se, c) == checkText else {
+        guard try unseal(d.check, checkName, k.se, k.kse, c) == checkText else {
             return .failure(AgentError(code: 1, message: "the check value of the store is wrong"))
         }
     } catch {
@@ -892,18 +1023,73 @@ func repair() {
     withStoreLock {
         do {
             let (h, aad, sealed) = try splitFile(blob)
-            try requirePresence(h.wm, fileKeyName, h.se)
+            try requirePresence(h.wm, fileKeyName, h.se, h.kse)
             let c = LAContext()
             c.localizedReason = "repair the secret store"
             #if SECRET_TEST
             guard confirm(c, "repair the secret store") else { fail("not confirmed", 5) }
             #endif
-            guard let m = try? unseal(h.wm, fileKeyName, h.se, c) else { fail("not confirmed", 5) }
+            guard let m = try? unseal(h.wm, fileKeyName, h.se, h.kse, c) else { fail("not confirmed", 5) }
             let d = try openPayload(sealed, aad, SymmetricKey(data: m))
-            try storeKeys(VaultKeys(m: m, pub: h.pub, se: h.se, grace: defaultGrace), new: true)
+            try storeKeys(VaultKeys(m: m, pub: h.pub, se: h.se, grace: defaultGrace, kpub: h.kpub, kse: h.kse), new: true)
             print("repair: a new key item, \(d.items.count) secrets, grace \(defaultGrace)s")
         } catch { fail(vaultMessage(error)) }
     }
+}
+
+// Add the ML-KEM-768 key and seal every v1 value again (033). One Touch ID; nothing changes
+// before it. The version marks stay, so the grace cache and the leases stay valid. The file goes
+// first, then the key item: readDoc takes the ML-KEM key from the header in between.
+func upgradePQ() {
+    guard pqSupported() else { fail("post-quantum keys need macOS 26 or later and a helper built there (./install.sh)", 2) }
+    withStoreLock {
+        do {
+            guard let found = try readDoc() else { fail("the store is empty", 3) }
+            var (d, k, h) = found
+            let old = d.items.filter { !isV2($0.v) }.count
+            if k.kpub != nil, old == 0, isV2(d.check), isV2(h.wm) {
+                print("touchid pq: all \(d.items.count) values are post-quantum")
+                return
+            }
+            let c: LAContext
+            switch confirmedContext("protect the secret store against quantum computers") {
+            case .failure(let e): fail(e.message, e.code)
+            case .success(let x): c = x
+            }
+            defer { c.invalidate() }
+            var plain = [Int: Data]()
+            for (i, it) in d.items.enumerated() where !isV2(it.v) {
+                valueTouch("read " + it.n)
+                plain[i] = try unseal(it.v, it.n, k.se, k.kse, c)
+            }
+            let m = isV2(h.wm) ? nil : try unseal(h.wm, fileKeyName, h.se, h.kse, c)
+            if k.kpub == nil {
+                let kem = try newKemKey()
+                k.kpub = kem.pub; k.kse = kem.se
+                h.kpub = kem.pub; h.kse = kem.se
+            }
+            for (i, v) in plain { d.items[i].v = try seal(v, d.items[i].n, k.pub, k.kpub) }
+            if !isV2(d.check) { d.check = try seal(checkText, checkName, k.pub, k.kpub) }
+            if let m = m { h.wm = try seal(m, fileKeyName, k.pub, k.kpub) }
+            writeFile(try joinFile(h, d, k.fileKey))
+            try storeKeys(k, new: false)
+            eventLog("touchid pq: \(plain.count) values sealed again")
+            print("touchid pq: \(plain.count) values sealed again, all \(d.items.count) values are post-quantum")
+        } catch let e as AgentError {
+            fail(e.message, e.code)
+        } catch {
+            fail(vaultMessage(error))
+        }
+    }
+}
+
+// on, off, partial DONE TOTAL or unsupported; no Touch ID.
+func pqStatus() -> String {
+    guard pqSupported() else { return "unsupported" }
+    guard let (d, k, h) = doc() else { return pqWanted() ? "on" : "off" }
+    guard k.kpub != nil else { return "off" }
+    let done = d.items.filter { isV2($0.v) }.count
+    return done == d.items.count && isV2(d.check) && isV2(h.wm) ? "on" : "partial \(done) \(d.items.count)"
 }
 
 // MARK: main
@@ -995,7 +1181,7 @@ case "write":
     mutate { d, k in
         for (n, v, c, e) in records {
             d.items.removeAll { $0.n == n }
-            d.items.append(VaultItem(n: n, c: c, x: e, v: try seal(v, n, k.pub), r: UUID().uuidString))
+            d.items.append(VaultItem(n: n, c: c, x: e, v: try seal(v, n, k.pub, k.kpub), r: UUID().uuidString))
         }
     }
 
@@ -1058,6 +1244,13 @@ case "repair":
     guard !noDialog else { fail("Touch ID confirmation needed, SECRET_NO_DIALOG is set", 5) }
     repair()
     stopAgent()
+
+case "pq":
+    guard !noDialog else { fail("Touch ID confirmation needed, SECRET_NO_DIALOG is set", 5) }
+    upgradePQ()
+
+case "pq-status":
+    print(pqStatus())
 
 case "ping":
     // opens the file: a damaged file or a changed key item stops each command here (017)
