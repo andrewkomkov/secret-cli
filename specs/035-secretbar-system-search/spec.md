@@ -43,6 +43,8 @@
 ## Requirements
 
 - **FR-001**: `SearchSecretsIntent: ShowInAppSearchResultsIntent` с `@AppIntent(schema: .system.search)`.
+  Макрос есть в SDK Xcode 26+ (`#if compiler(>=6.2)`). Сборка Xcode 16 (CI `macos-15`) действия
+  не содержит.
 - **FR-002**: `Navigation.search(TERM)`: запрос для главного окна, как `newSecret` (019).
 - **FR-003**: `SecretQuery: IndexedEntityQuery` только на macOS 27 (`@available`) и только при сборке
   SDK macOS 27 (`#if compiler(>=6.4)`). CI на `macos-15` и `macos-26` собирает SecretBar без неё.
