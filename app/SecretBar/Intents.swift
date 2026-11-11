@@ -90,6 +90,8 @@ struct OpenSecretIntent: OpenIntent {
 
 // "Search in SecretBar" from Siri, Spotlight and Shortcuts (035): the system search schema opens
 // the main window with the term in the search field. The search sees names and comments only.
+// The macro @AppIntent(schema:) is in the SDK of Xcode 26 and later (Swift 6.2).
+#if compiler(>=6.2)
 @AppIntent(schema: .system.search)
 struct SearchSecretsIntent: ShowInAppSearchResultsIntent {
     static let searchScopes: [StringSearchScope] = [.general]
@@ -102,6 +104,7 @@ struct SearchSecretsIntent: ShowInAppSearchResultsIntent {
         return .result()
     }
 }
+#endif
 
 #if compiler(>=6.4)
 // macOS 27 (035): the system asks the app to index its entities again, for example after it
