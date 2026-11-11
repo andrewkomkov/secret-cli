@@ -31,6 +31,12 @@ struct MainWindow: View {
         if sheet == nil { sheet = .add }
     }
 
+    private func takeSearchRequest() {
+        guard let term = nav.searchPending else { return }
+        nav.searchPending = nil
+        query = term
+    }
+
     private var listed: [Secret] {
         let base: [Secret]
         switch nav.sidebar {
@@ -113,6 +119,8 @@ struct MainWindow: View {
         .navigationTitle("SecretBar")
         .onAppear(perform: takeAddRequest)
         .onChange(of: nav.addPending) { takeAddRequest() }
+        .onAppear(perform: takeSearchRequest)
+        .onChange(of: nav.searchPending) { takeSearchRequest() }
         .sheet(item: $sheet) { s in
             switch s {
             case .add: EditorSheet(editing: nil)

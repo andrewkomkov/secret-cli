@@ -88,6 +88,36 @@ struct OpenSecretIntent: OpenIntent {
     }
 }
 
+// "Search in SecretBar" from Siri, Spotlight and Shortcuts (035): the system search schema opens
+// the main window with the term in the search field. The search sees names and comments only.
+@AppIntent(schema: .system.search)
+struct SearchSecretsIntent: ShowInAppSearchResultsIntent {
+    static let searchScopes: [StringSearchScope] = [.general]
+
+    var criteria: StringSearchCriteria
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        Navigation.shared.search(criteria.term)
+        return .result()
+    }
+}
+
+#if compiler(>=6.4)
+// macOS 27 (035): the system asks the app to index its entities again, for example after it
+// rebuilt the Spotlight index. updateSpotlight follows the "Show in Spotlight" switch.
+@available(macOS 27.0, *)
+extension SecretQuery: IndexedEntityQuery {
+    func reindexAllEntities(indexDescription: CSSearchableIndexDescription) async throws {
+        await Store.shared.updateSpotlight()
+    }
+
+    func reindexEntities(for identifiers: [String], indexDescription: CSSearchableIndexDescription) async throws {
+        await Store.shared.updateSpotlight()
+    }
+}
+#endif
+
 struct SecretShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(intent: CopySecretIntent(),
