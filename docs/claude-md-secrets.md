@@ -131,6 +131,7 @@ use the name. Do NOT guess a name.
   `run`, `export` and `mv` ask the user for Touch ID. One `run` with all the names asks once. Wait
   for it. If the user refuses, stop and ask why. Only the user changes the Touch ID settings:
   - Do NOT run `secret touchid off`, `secret touchid grace` or `secret touchid repair`.
+  - Do NOT run `secret touchid pq` unless the user asks. It seals all values again after Touch ID.
   - Do NOT change `~/.local/state/secret/touchid-ok`.
 - In the Secure Enclave store, Touch ID is always on. `ls`, `has`, `check`, `note` and
   `expire` do not ask for it.

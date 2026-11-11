@@ -285,6 +285,7 @@ the shell that runs `secret run` would expand it to empty too early.
 | `secret touchid on\|off\|status` | file keychain protected mode: only the helper reads values, after Touch ID |
 | `secret touchid grace SECONDS` | how long after a confirmation not to ask again: idle seconds in the Secure Enclave store (default 1800), seconds from the confirmation in the file keychain (default 300); `0` asks every time |
 | `secret touchid repair` | Secure Enclave store: rebuild its keychain item from the store file, one touch |
+| `secret touchid pq` | Secure Enclave store: add an ML-KEM-768 key and seal each value with it and the P-256 key (post-quantum), one touch, macOS 26 or later |
 | `secret migrate --backup FILE`, `--back` | move all secrets to the Secure Enclave store (backup to FILE first) or back to the file keychain |
 | `secret version` | print the version |
 
@@ -375,9 +376,13 @@ loader that replaces `secret:NAME` with the value after `source`, for example on
 | A value stays on the clipboard | `copy` clears the clipboard after 30 seconds | clipboard managers can keep the value in their history |
 
 **Secure Enclave store.** The helper `build/secret-vault` keeps one file. AES-GCM under the
-file key encrypts the payload: names, comments, expiry dates and values. ECIES under a public key
-from the Secure Enclave encrypts each value again. Thus writes need no Touch ID, and reads need
-Touch ID. The login keychain item `secret-cli.vault` holds the file key, the public key, the
+file key encrypts the payload: names, comments, expiry dates and values. The public keys of the
+Secure Enclave encrypt each value again. Thus writes need no Touch ID, and reads need Touch ID.
+On macOS 26 and later each value needs two Secure Enclave keys: P-256 and ML-KEM-768
+(post-quantum). Both shared secrets go into one HKDF-SHA256, then AES-GCM. A quantum computer that
+breaks P-256 still cannot open a copy of the file. A new store gets both keys. An older store
+keeps ECIES P-256 until you run `secret touchid pq`: one touch seals each value again.
+`secret touchid status` shows `post-quantum: on`. The login keychain item `secret-cli.vault` holds the file key, the public key, the
 wrapped Secure Enclave key and the grace state. Only the helper reads it without a question.
 
 The grace lives in a helper agent process. After Touch ID it opens the values and keeps them in
