@@ -11,7 +11,7 @@
 - [x] T007 2026-11-11 [US4] настройки репы через `gh api`: private vulnerability reporting (`enabled: true`), delete branch on merge, wiki off
 - [x] T008 2026-11-11 [US4] ruleset `main` (id 27046312): нет удаления и force-push, обязательны `tests on macos-15` и `tests on macos-26`, обход — роль admin
 - [x] T009 2026-11-11 CI PR #10 зелёный на `macos-15` (4 мин) и `macos-26` (5 мин)
-- [ ] T010 ручная: следующий релиз, `gh attestation verify` проходит. Дата — при выполнении
+- [x] T010 ручная, 2026-11-14: релиз 1.8.0, job `attest` прошёл, `gh attestation verify secret-1.8.0.tar.gz -R andrewkomkov/secret-cli` даёт код 0. Формула tap обновилась сама, `sha256` совпадает с tarball
 
 ## Попутно
 
