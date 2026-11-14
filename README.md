@@ -326,7 +326,9 @@ VALUE as an argument shows in `ps` and in the shell history. Use stdin or `ask`.
   keyboard layout.
 - **Spotlight.** Secrets show up in Spotlight, and the action "Copy Secret" is in Shortcuts. The
   index gets only names and comments, never values. Settings → "Show in Spotlight" turns it off
-  and erases the index.
+  and erases the index. "Search in SecretBar" from Siri, Spotlight or Shortcuts opens the main
+  window with the words in its search field. On macOS 27 Spotlight asks SecretBar to rebuild the
+  index when it needs it.
 - **Menu bar icon**: the lock shows the grace state: open with the time left, closed, or needs
   attention. A click opens a panel with the status and search. ↩ or a click copies the reference, ⇧↩ or ⇧-click the value. The + button adds a secret. If search finds nothing, ↩ creates a secret with that name.
 - **Main window**: projects on the left (from the comment "project: …"), the list in the middle,

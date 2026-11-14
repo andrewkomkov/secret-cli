@@ -25,6 +25,14 @@ final class Navigation: ObservableObject {
         openMain?()
     }
 
+    // A search from Siri, Spotlight or Shortcuts (035): the main window puts it in its search field.
+    @Published var searchPending: String?
+    func search(_ term: String) {
+        searchPending = term
+        sidebar = .all
+        showMain()
+    }
+
     // The main window takes the request on appear or on change and opens the add sheet (019).
     @Published var addPending = false
     var addName = ""
