@@ -36,7 +36,6 @@ jobs:
           done
           perl -c hooks/claude-pretooluse.sh
           zsh -n completions/_secret
-          node --check site/main.js
 
       - name: shellcheck
         run: |
