@@ -1,15 +1,15 @@
 <div align="center">
 
-# secret
+# SecretBar
 
-**Секреты в keychain macOS, которыми агент пользуется, не видя значений.**
+**Секреты, которыми ваш AI-агент пользуется по имени и никогда не видит. Команда `secret` и приложение SecretBar в строке меню хранят их в Secure Enclave вашего Mac.**
 
-[English](README.md) · **Русский**
+[English](README.md) · **Русский** · [Сайт](https://secretbar.github.io/ru/)
 
 ![macOS](https://img.shields.io/badge/macOS-only-000000?logo=apple&logoColor=white)
 ![bash 3.2](https://img.shields.io/badge/bash-3.2-4EAA25?logo=gnubash&logoColor=white)
 ![deps](https://img.shields.io/badge/dependencies-none-blue)
-[![CI](https://github.com/andrewkomkov/secret-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/andrewkomkov/secret-cli/actions/workflows/ci.yml)
+[![CI](https://github.com/secretbar/secretbar/actions/workflows/ci.yml/badge.svg)](https://github.com/secretbar/secretbar/actions/workflows/ci.yml)
 ![Touch ID](https://img.shields.io/badge/Touch%20ID-optional-lightgrey)
 
 [Быстрый старт](#быстрый-старт) ·
@@ -44,7 +44,7 @@ GITHUB_TOKEN                        GitHub, личный токен для gh
 ## Быстрый старт
 
 ```sh
-brew install andrewkomkov/secret/secret   # команда, оба helper, автодополнение zsh
+brew install secretbar/tap/secretbar   # команда, оба helper, автодополнение zsh
 secret init                               # создать keychain и задать его пароль
 secret ask MY_TOKEN                       # положить первый секрет
 secret run --mask MY_TOKEN -- ./deploy.sh
@@ -53,13 +53,13 @@ secret run --mask MY_TOKEN -- ./deploy.sh
 Хук Claude Code и приложение SecretBar (для него нужен Xcode):
 
 ```sh
-"$(brew --prefix secret)/libexec/install.sh" --claude-hook --app
+"$(brew --prefix secretbar)/libexec/install.sh" --claude-hook --app
 ```
 
 Из исходников:
 
 ```sh
-git clone https://github.com/andrewkomkov/secret-cli && cd secret-cli
+git clone https://github.com/secretbar/secretbar && cd secretbar
 ./install.sh --claude-hook     # symlink в ~/.local/bin, helper, автодополнение zsh, хук
 ```
 
@@ -508,7 +508,7 @@ Keychain Access не меняются. Touch ID проверяет тестов�
 проверяются руками. CI запускает те же тесты на macOS 15 и macOS 26 для каждого push и PR.
 
 **Проверка релиза.** У каждого tarball релиза есть attestation происхождения сборки:
-`gh attestation verify secret-X.Y.Z.tar.gz -R andrewkomkov/secret-cli`. Об уязвимости пишите по
+`gh attestation verify secret-X.Y.Z.tar.gz -R secretbar/secretbar`. Об уязвимости пишите по
 [SECURITY.md](SECURITY.md).
 
 Изменения идут через spec-kit: `specs/NNN-*/` со `spec.md`, `plan.md`, `tasks.md`. Правила —
