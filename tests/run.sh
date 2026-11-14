@@ -1,6 +1,4 @@
 #!/bin/bash
-# Тесты на временном keychain: рабочий keychain и список Keychain Access не трогаются.
-# Диалоги (ask, unlock без терминала) не проверяются: им нужен человек.
 set -uo pipefail
 export SECRET_NO_DIALOG=1
 unset SECRET_RUN_MASK CLAUDECODE
@@ -77,7 +75,7 @@ printf 'A=secret:T_NOPE\n' > bad.env
 check "check: missing reference fails" bash -c "! '$SECRET' check bad.env"
 check "run: missing reference fails" bash -c "! '$SECRET' run -e bad.env -- true"
 check "check prints no values" bash -c "! '$SECRET' check .env | grep -q quoted"
-# --- 013: выборочный import и ошибки без текста строки
+# --- 013: selective import and errors without the line text
 printf 'SEL_A=alpha-value\nSEL_B=beta-value\nSEL_PORT=8080\nSEL_DUP=second\n' > sel.env
 s import -p SEL_ --keys SEL_A,SEL_B --ref SEL_DUP=T_B sel.env 2>/dev/null
 check "013: --keys stores only these keys" bash -c "'$SECRET' has SEL_SEL_A && '$SECRET' has SEL_SEL_B && ! '$SECRET' has SEL_SEL_PORT"
@@ -98,7 +96,6 @@ s rm T_A 2>/dev/null
 check "rm deletes" bash -c "! '$SECRET' has T_A"
 check "rm missing fails" bash -c "! '$SECRET' rm T_A"
 
-# Заблокированный keychain здесь не проверяется: на нём macOS сама открывает окно пароля.
 check "ask without a dialog fails" bash -c "! '$SECRET' ask T_X </dev/null"
 check "missing keychain fails" env SECRET_KEYCHAIN="$TMP/none.keychain-db" bash -c "! '$SECRET' ls"
 
@@ -183,7 +180,7 @@ done
 check "026: lease needs the secure enclave store" bash -c "out=\$('$SECRET' lease T_B 2>&1); [ \$? -eq 1 ] && [[ \$out == *'lease needs the secure enclave store'* ]]"
 check "026: lease status and --revoke need the secure enclave store" bash -c "! '$SECRET' lease status 2>/dev/null && ! '$SECRET' lease --revoke 2>/dev/null"
 check "hook passes input without a command" bash -c "echo '{}' | '$HOOK'"
-# --- 002: copy (буфер обмена подменён файлом)
+# --- 002: copy (the clipboard is replaced by a file)
 export SECRET_PBCOPY="cat > '$TMP/clip'" SECRET_PBPASTE="cat '$TMP/clip'"
 printf '%s' 'clip-value-1' | s set C_A 2>/dev/null
 out="$(s copy C_A 1 2>&1)"
@@ -198,7 +195,7 @@ check "copy: other text kept" test "$(cat "$TMP/clip")" = 'other text'
 check "copy: logged" bash -c "tail -1 '$SECRET_LOG' | grep -q \$'\\tcopy\\thuman\\tC_A'"
 check "copy: bad seconds rejected" bash -c "! '$SECRET' copy C_A 0"
 
-# --- 021: gh (gh подменён скриптом, окно подтверждения — ответ из переменной)
+# --- 021: gh (gh is replaced by a script, the confirmation window is an answer from a variable)
 cat > "$TMP/gh" <<EOF
 #!/bin/bash
 printf '%s\n' "\$*" > '$TMP/gh-args'
@@ -270,7 +267,7 @@ check "mv -f replaces NEW" test "$(s get MV_C)" = mv-value
 # --- 002: completion
 check "completion: zsh syntax" zsh -n "$ROOT/completions/_secret"
 
-# --- 003: export и restore во второй временный keychain
+# --- 003: export and restore into a second temporary keychain
 KC2="$TMP/second.keychain-db"
 printf 'create-keychain -p "test" "%s"\n' "$KC2" | security -i >/dev/null
 trap 'security delete-keychain "$SECRET_KEYCHAIN" 2>/dev/null; security delete-keychain "$KC2" 2>/dev/null; rm -rf "$TMP"' EXIT
@@ -310,7 +307,7 @@ check "restore: damaged file fails" bash -c "! echo '$PW' | SECRET_KEYCHAIN='$KC
 check "restore: keychain unchanged after a failure" test "$(s2 get B_TRICKY)" = changed-again
 check "restore: not a backup fails" bash -c "printf 'x\n' | openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -md sha256 -salt -pass pass:'$PW' -out '$TMP/other.enc' && ! echo '$PW' | SECRET_KEYCHAIN='$KC2' '$SECRET' restore --pass-stdin '$TMP/other.enc'"
 
-# --- 006: маскировка под Claude Code и закодированные значения
+# --- 006: masking under Claude Code and encoded values
 printf '%s' 'p@ss/word+long=1' | s set AM_A 2>/dev/null
 printf '%s' 'short' | s set AM_S 2>/dev/null
 check "agent: masked without --mask" test "$(CLAUDECODE=1 s run AM_A -- sh -c 'echo "$AM_A"')" = '***'
@@ -327,7 +324,7 @@ check "mask: URL encoding with lower-case hex" test "$(s run --mask AM_A -- sh -
 check "mask: short value masked as is" test "$(s run --mask AM_S -- sh -c 'echo "$AM_S"')" = '***'
 check "mask: short value not masked in base64" test "$(s run --mask AM_S -- sh -c 'printf %s "$AM_S" | base64')" = 'c2hvcnQ='
 
-# --- 004, 007: защищённый режим на тестовой сборке helper (Touch ID — ответ из файла)
+# --- 004, 007: protected mode on the test build of the helper (Touch ID is an answer from a file)
 REAL_HELPER="$ROOT/build/secret-auth"
 TH="$TMP/th/secret-auth"
 mkdir -p "$TMP/th"
@@ -426,7 +423,6 @@ if swiftc -swift-version 5 -O -D SECRET_TEST "$ROOT/helper/secret-auth.swift" -o
   check "off: no temporary items left" bash -c "! security dump-keychain '$KC3' | grep -q -e '#plain' -e '#new'"
   check "off: status" bash -c "$(declare -f s3); TH='$TH' KC3='$KC3' SECRET='$SECRET'; s3 touchid status | grep -q '^touchid: off'"
 
-  # обновление helper: вторая сборка с другим кодом и другим cdhash
   TH2="$TMP/th/secret-auth-2"
   { cat "$ROOT/helper/secret-auth.swift"; echo "// test build 2"; } > "$TMP/th/v2.swift"
   swiftc -swift-version 5 -O -D SECRET_TEST "$TMP/th/v2.swift" -o "$TH2" 2>/dev/null && codesign -f -s - -o runtime "$TH2" 2>/dev/null
@@ -442,14 +438,12 @@ if swiftc -swift-version 5 -O -D SECRET_TEST "$ROOT/helper/secret-auth.swift" -o
   SECRET_KEYCHAIN="$KC3" SECRET_AUTH_HELPER="$TH2" SECRET_NO_DIALOG= "$SECRET" touchid off 2>/dev/null
   check "rehelper: off with the new build" test "$("$TH2" owner "$KC3" P_A)" = foreign
 
-  # запись helper без политики (политику удалили): bash всё равно читает через helper, Touch ID каждый раз
   printf '%s' 'no-policy-value' | "$TH" write "$KC3" NP_A
   n="$(calls)"
   check "no policy: get goes through the helper" test "$(s3 get NP_A)" = no-policy-value
   s3 get NP_A >/dev/null
   check "no policy: Touch ID each time" test "$(calls)" = "$((n + 2))"
 
-  # подмена helper не работает для keychain по умолчанию, даже через другой путь к тому же файлу
   if [ -x "$REAL_HELPER" ]; then
     mkdir -p "$TMP/home/Library/Keychains"
     ln -s "$SECRET_KEYCHAIN" "$TMP/home/Library/Keychains/secrets.keychain-db"
@@ -459,7 +453,7 @@ if swiftc -swift-version 5 -O -D SECRET_TEST "$ROOT/helper/secret-auth.swift" -o
   fi
 fi
 
-# --- 017, 018: хранилище Secure Enclave на тестовой сборке helper (программный ключ, Touch ID — ответ из файла)
+# --- 017, 018: Secure Enclave store on the test build of the helper (software key, Touch ID is an answer from a file)
 TS_DIR="$ROOT/build/test"
 TV="$TS_DIR/secret-vault-test"
 if [ ! -x "$TV" ] || [ "$(cat "$TS_DIR/secret-vault-test.src-sha256" 2>/dev/null)" != "$(shasum -a 256 "$ROOT/helper/store/main.swift" | cut -d' ' -f1)" ]; then
@@ -474,7 +468,6 @@ else
   echo allow > "$SECRET_TEST_AUTH"
   vcalls() { [ -f "$SECRET_TEST_AUTH_LOG" ] && wc -l < "$SECRET_TEST_AUTH_LOG" | tr -d ' ' || echo 0; }
 
-  # переезд из файлового keychain (009 → 018): свой keychain и своё хранилище
   KC6="$TMP/m.keychain-db"
   printf 'create-keychain -p "test" "%s"\n' "$KC6" | security -i >/dev/null
   sm() { SECRET_TEST_STORE="mig$$" SECRET_KEYCHAIN="$KC6" SECRET_VAULT_HELPER="$TV" SECRET_STORE_MODE="$TMP/m-mode" \
@@ -506,7 +499,6 @@ else
   check "018: --back empties the store" bash -c "[ -z \"\$(SECRET_TEST_STORE='mig$$' '$TV' list)\" ]"
   SECRET_TEST_STORE="mig$$" "$TV" wipe 2>/dev/null
 
-  # рабочее хранилище прогона
   KC5="$TMP/v.keychain-db"
   printf 'create-keychain -p "test" "%s"\n' "$KC5" | security -i >/dev/null
   echo vault > "$TMP/v-mode"
@@ -573,7 +565,7 @@ else
   check "017: grace 0 asks each time" test "$(vcalls)" = "$((n + 2))"
   sv touchid grace 1800 2>/dev/null
 
-  # --- 014: копирование со скрытым типом (тестовый буфер, не системный), status
+  # --- 014: copy with a concealed type (test clipboard, not the system one), status
   export SECRET_TEST_PASTEBOARD="secretcli.test.$$"
   printf 'clip-check' | "$TV" clip
   check "014: clip marks the value concealed" test "$("$TV" test-paste)" = "concealed clip-check"
@@ -584,7 +576,7 @@ else
   check "014: status with an active grace" bash -c "'$TV' status | grep -qE '^ok active [0-9]+ [0-9]+ [0-9]+ grace=[0-9]+\$'"
   unset SECRET_TEST_PASTEBOARD
 
-  # --- 010: скользящий grace
+  # --- 010: sliding grace
   sv touchid grace 2 2>/dev/null
   sv lock 2>/dev/null; n="$(vcalls)"
   for i in 1 2 3 4; do sv get V_A >/dev/null; sleep 1; done
@@ -603,7 +595,6 @@ else
   n="$(vcalls)"; sv get V_A >/dev/null
   "$TV" test-lock; sleep 0.5; sv get V_A >/dev/null
   check "010: a screen lock ends the grace" test "$(vcalls)" = "$((n + 2))"
-  # контекст стареет: агент отдаёт прочитанные значения из памяти
   export SECRET_TEST_CONTEXT_FRESH=1
   sv lock 2>/dev/null; n="$(vcalls)"
   sv get V_A >/dev/null; sleep 2
@@ -1068,7 +1059,7 @@ SH
   unset JAR_PATH_OUT JAR_MODE_OUT
 }
 
-# --- 012: SecretBar. Разбор вывода команд (--selftest); бинарник без entitlements и без вызовов keychain
+# --- 012: SecretBar. Parse of command output (--selftest); binary without entitlements and without keychain calls
 APP_SUM="$(cat "$ROOT"/app/SecretBar/*.swift "$ROOT/app/SecretBar.xcodeproj/project.pbxproj" "$ROOT"/app/SecretBar/Assets.xcassets/AppIcon.appiconset/Contents.json "$ROOT/app/SecretBar/Localizable.xcstrings" | shasum -a 256 | cut -d' ' -f1)"
 if [ ! -x "$ROOT/build/SecretBar.app/Contents/MacOS/SecretBar" ] || [ "$(cat "$ROOT/build/SecretBar.src-sha256" 2>/dev/null)" != "$APP_SUM" ]; then
   "$ROOT/app/build.sh" "$ROOT/build" >/dev/null 2>&1 || true
@@ -1088,7 +1079,6 @@ else
   echo "skip  015: SecretBar is not installed or Spotlight is off"
 fi
 
-# заблокированный keychain: статус через helper, системное окно не открывается
 if [ -x "$REAL_HELPER" ]; then
   s lock 2>/dev/null
   check "helper: status locked" test "$("$REAL_HELPER" status "$SECRET_KEYCHAIN")" = locked
@@ -1108,7 +1098,6 @@ for c in 'secret touchid off' 'secret touchid grace 0' \
 done
 check "hook passes: secret touchid status" bash -c "$(declare -f hook); HOOK='$HOOK'; hook 'secret touchid status'"
 
-# --- 023: текст heredoc для cat, tee, git не проверяется; helper хранилища можно осмотреть
 hook_blocks() { hook "$1"; [ $? -eq 2 ]; }
 for c in $'cat <<EOF | sh\nsecret get X\nEOF' \
          $'bash <<EOF\nsecret get X\nEOF' \
@@ -1128,7 +1117,7 @@ for c in $'cat > spec.md <<\'EOF\'\nrun `secret touchid repair` after an upgrade
   check "023: hook passes: ${c//$'\n'/ ⏎ }" hook "$c"
 done
 
-# --- 023: хук и правила агента для Claude Code (временные settings.json и CLAUDE.md)
+# --- 023: hook and agent rules for Claude Code (temporary settings.json and CLAUDE.md)
 CS="$TMP/claude/settings.json"; CM="$TMP/claude/CLAUDE.md"
 mkdir -p "$TMP/claude"
 printf '{\n  "model": "x",\n  "hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [{"type": "command", "command": "/old/place/hooks/claude-pretooluse.sh"}, {"type": "command", "command": "/other/hook.sh"}]}]}\n}\n' > "$CS"
@@ -1201,6 +1190,49 @@ check "030: extension en and ru have the same keys" test "$(ext_keys "$EXT/_loca
 ext_used() { { grep -ohE "data-i18n(-title)?=\"[A-Za-z]+\"" "$EXT"/*.html | cut -d'"' -f2; grep -ohE "__MSG_[A-Za-z]+__" "$EXT/manifest.json" | sed 's/__MSG_//; s/__$//'; grep -ohE "\bt\('[A-Za-z]+'" "$EXT"/*.js | cut -d"'" -f2; } | sort -u; }
 check "030: every extension string in use has an en message" bash -c "$(declare -f ext_keys ext_used); EXT='$EXT'; [ -z \"\$(comm -23 <(ext_used) <(ext_keys \"\$EXT/_locales/en/messages.json\"))\" ]"
 check "030: extension pages use the messages, not English literals" bash -c "! grep -qE \"show\\('|textContent = '\" '$EXT'/popup.js '$EXT'/options.js"
+
+# --- 040: the catalog of SecretBar and the extension have the European languages, formats match en
+l10n_problems() {
+  perl -MJSON::PP -e '
+    sub rd { open my $f, "<:raw", $_[0] or return print "cannot read $_[0]\n"; local $/; JSON::PP->new->utf8->decode(<$f>) }
+    sub fmt { my ($s, $i, @a) = ($_[0], 0); while ($s =~ /%(?:(\d+)\$)?(lld|ld|d|\@|f|s)/g) { $i++; push @a, [($1 || $i), $2] } join ",", map { $_->[1] } sort { $a->[0] <=> $b->[0] } @a }
+    sub ph { join ",", sort($_[0] =~ /\$[A-Za-z0-9_]+\$/g) }
+    my ($cat, $loc) = @ARGV;
+    my $s = rd($cat)->{strings};
+    for my $k (sort keys %$s) {
+      my $l = $s->{$k}{localizations} or next;
+      next unless $l->{ru};
+      for my $lang (qw(ru de fr es it pt-PT pl)) {
+        my $u = $l->{$lang} && $l->{$lang}{stringUnit};
+        if (!$u || $u->{state} ne "translated") { print "catalog: $lang missing: $k\n"; next }
+        print "catalog: $lang format differs: $k\n" if fmt($u->{value}) ne fmt($k);
+      }
+    }
+    my $en = rd("$loc/en/messages.json");
+    for my $lang (qw(ru de fr es it pt_PT pl)) {
+      my $m = rd("$loc/$lang/messages.json");
+      print "extension: $lang keys differ\n" if join(",", sort keys %$m) ne join(",", sort keys %$en);
+      for my $k (sort keys %$en) {
+        next unless $m->{$k};
+        print "extension: $lang placeholders differ: $k\n"
+          if ph($m->{$k}{message}) ne ph($en->{$k}{message})
+          || JSON::PP->new->canonical->encode($m->{$k}{placeholders} || {}) ne JSON::PP->new->canonical->encode($en->{$k}{placeholders} || {});
+      }
+    }' "$1" "$2"
+}
+L10N_OUT="$(l10n_problems "$ROOT/app/SecretBar/Localizable.xcstrings" "$EXT/_locales" 2>&1)"
+check "040: every catalog key with ru has de fr es it pt-PT pl, formats match en" test -z "$(grep '^catalog' <<< "$L10N_OUT")"
+check "040: every extension locale has the keys and placeholders of en" test -z "$(grep -v '^catalog' <<< "$L10N_OUT")"
+mkdir -p "$TMP/l10n/en" "$TMP/l10n/de"
+printf '{"strings":{"%%@ a":{"localizations":{"ru":{"stringUnit":{"state":"translated","value":"%%lld a"}}}}}}' > "$TMP/l10n/cat.xcstrings"
+printf '{"k":{"message":"$X$","placeholders":{"x":{"content":"$1"}}}}' > "$TMP/l10n/en/messages.json"
+printf '{"k":{"message":"X","placeholders":{"x":{"content":"$1"}}}}' > "$TMP/l10n/de/messages.json"
+L10N_BAD="$(l10n_problems "$TMP/l10n/cat.xcstrings" "$TMP/l10n" 2>&1)"
+check "040: the check finds a missing language" grep -q 'catalog: de missing: %@ a' <<< "$L10N_BAD"
+check "040: the check finds a wrong format" grep -q 'catalog: ru format differs: %@ a' <<< "$L10N_BAD"
+check "040: the check finds a lost placeholder" grep -q 'extension: de placeholders differ: k' <<< "$L10N_BAD"
+check "040: the check finds a missing locale file" grep -q 'cannot read .*/fr/messages.json' <<< "$L10N_BAD"
+unset L10N_OUT L10N_BAD
 
 # --- 030: bridge daemon (loopback), without a browser
 BR_DIR="$ROOT/build/test"

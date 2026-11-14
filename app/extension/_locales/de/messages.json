@@ -1,0 +1,93 @@
+{
+  "extName": {
+    "message": "Secret Cookie Bridge"
+  },
+  "extDescription": {
+    "message": "Sendet die Cookies der aktuellen Website als Cookie-Jar an den lokalen Befehl secret."
+  },
+  "actionTitle": {
+    "message": "Cookies an secret senden"
+  },
+  "sendButton": {
+    "message": "Cookies an secret senden"
+  },
+  "settingsLink": {
+    "message": "Einstellungen"
+  },
+  "settingsTitle": {
+    "message": "Secret Cookie Bridge: Einstellungen"
+  },
+  "tokenLabel": {
+    "message": "Token (von $CMD$)",
+    "placeholders": {
+      "cmd": {
+        "content": "$1"
+      }
+    }
+  },
+  "nameLabel": {
+    "message": "Name des Geheimnisses (UPPER_SNAKE_CASE)"
+  },
+  "portLabel": {
+    "message": "Port"
+  },
+  "saveButton": {
+    "message": "Sichern"
+  },
+  "errNoConfig": {
+    "message": "Lege zuerst in den Einstellungen das Token und den Namen des Geheimnisses fest."
+  },
+  "errNoPage": {
+    "message": "Öffne zuerst eine Webseite."
+  },
+  "errNoCookies": {
+    "message": "Keine Cookies für $HOST$. Prüfe den Websitezugriff der Erweiterung in Safari.",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "stored": {
+    "message": "$COUNT$ Cookies von $HOST$ als $NAME$ gespeichert.",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "host": {
+        "content": "$2"
+      },
+      "name": {
+        "content": "$3"
+      }
+    }
+  },
+  "errRefused": {
+    "message": "Der Daemon hat abgelehnt: HTTP $STATUS$ $TEXT$",
+    "placeholders": {
+      "status": {
+        "content": "$1"
+      },
+      "text": {
+        "content": "$2"
+      }
+    }
+  },
+  "errFailed": {
+    "message": "Fehler: $MSG$\nLäuft der Daemon? (secret cookie bridge start)",
+    "placeholders": {
+      "msg": {
+        "content": "$1"
+      }
+    }
+  },
+  "errName": {
+    "message": "Der Name muss [A-Za-z_][A-Za-z0-9_.-]* entsprechen."
+  },
+  "errPort": {
+    "message": "Der Port muss zwischen 1 und 65535 liegen."
+  },
+  "saved": {
+    "message": "Gesichert."
+  }
+}

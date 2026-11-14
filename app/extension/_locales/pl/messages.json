@@ -1,0 +1,93 @@
+{
+  "extName": {
+    "message": "Secret Cookie Bridge"
+  },
+  "extDescription": {
+    "message": "Wysyła pliki cookie bieżącej witryny do lokalnego polecenia secret jako cookie jar."
+  },
+  "actionTitle": {
+    "message": "Wyślij pliki cookie do secret"
+  },
+  "sendButton": {
+    "message": "Wyślij pliki cookie do secret"
+  },
+  "settingsLink": {
+    "message": "Ustawienia"
+  },
+  "settingsTitle": {
+    "message": "Secret Cookie Bridge: ustawienia"
+  },
+  "tokenLabel": {
+    "message": "Token (z $CMD$)",
+    "placeholders": {
+      "cmd": {
+        "content": "$1"
+      }
+    }
+  },
+  "nameLabel": {
+    "message": "Nazwa sekretu (UPPER_SNAKE_CASE)"
+  },
+  "portLabel": {
+    "message": "Port"
+  },
+  "saveButton": {
+    "message": "Zachowaj"
+  },
+  "errNoConfig": {
+    "message": "Najpierw ustaw token i nazwę sekretu w ustawieniach."
+  },
+  "errNoPage": {
+    "message": "Najpierw otwórz stronę internetową."
+  },
+  "errNoCookies": {
+    "message": "Brak plików cookie dla $HOST$. Sprawdź dostęp rozszerzenia do witryny w Safari.",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "stored": {
+    "message": "Zapisano pliki cookie ($COUNT$) z $HOST$ jako $NAME$.",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "host": {
+        "content": "$2"
+      },
+      "name": {
+        "content": "$3"
+      }
+    }
+  },
+  "errRefused": {
+    "message": "Demon odmówił: HTTP $STATUS$ $TEXT$",
+    "placeholders": {
+      "status": {
+        "content": "$1"
+      },
+      "text": {
+        "content": "$2"
+      }
+    }
+  },
+  "errFailed": {
+    "message": "Błąd: $MSG$\nCzy demon działa? (secret cookie bridge start)",
+    "placeholders": {
+      "msg": {
+        "content": "$1"
+      }
+    }
+  },
+  "errName": {
+    "message": "Nazwa musi pasować do [A-Za-z_][A-Za-z0-9_.-]*."
+  },
+  "errPort": {
+    "message": "Port musi być z zakresu 1–65535."
+  },
+  "saved": {
+    "message": "Zachowano."
+  }
+}
