@@ -1,0 +1,93 @@
+{
+  "extName": {
+    "message": "Secret Cookie Bridge"
+  },
+  "extDescription": {
+    "message": "Envia os cookies do site atual para o comando local secret como cookie jar."
+  },
+  "actionTitle": {
+    "message": "Enviar cookies para secret"
+  },
+  "sendButton": {
+    "message": "Enviar cookies para secret"
+  },
+  "settingsLink": {
+    "message": "Definições"
+  },
+  "settingsTitle": {
+    "message": "Secret Cookie Bridge: definições"
+  },
+  "tokenLabel": {
+    "message": "Token (de $CMD$)",
+    "placeholders": {
+      "cmd": {
+        "content": "$1"
+      }
+    }
+  },
+  "nameLabel": {
+    "message": "Nome do segredo (UPPER_SNAKE_CASE)"
+  },
+  "portLabel": {
+    "message": "Porta"
+  },
+  "saveButton": {
+    "message": "Guardar"
+  },
+  "errNoConfig": {
+    "message": "Defina primeiro o token e o nome do segredo nas definições."
+  },
+  "errNoPage": {
+    "message": "Abra primeiro uma página web."
+  },
+  "errNoCookies": {
+    "message": "Não há cookies para $HOST$. Verifique o acesso da extensão ao site no Safari.",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "stored": {
+    "message": "$COUNT$ cookies de $HOST$ guardados como $NAME$.",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "host": {
+        "content": "$2"
+      },
+      "name": {
+        "content": "$3"
+      }
+    }
+  },
+  "errRefused": {
+    "message": "O daemon recusou: HTTP $STATUS$ $TEXT$",
+    "placeholders": {
+      "status": {
+        "content": "$1"
+      },
+      "text": {
+        "content": "$2"
+      }
+    }
+  },
+  "errFailed": {
+    "message": "Falha: $MSG$\nO daemon está em execução? (secret cookie bridge start)",
+    "placeholders": {
+      "msg": {
+        "content": "$1"
+      }
+    }
+  },
+  "errName": {
+    "message": "O nome deve corresponder a [A-Za-z_][A-Za-z0-9_.-]*."
+  },
+  "errPort": {
+    "message": "A porta deve estar entre 1 e 65535."
+  },
+  "saved": {
+    "message": "Guardado."
+  }
+}

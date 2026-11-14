@@ -27,7 +27,8 @@ struct SecretEntity: AppEntity, IndexedEntity {
         let a = CSSearchableItemAttributeSet(contentType: .text)
         a.displayName = id
         a.contentDescription = comment
-        a.keywords = id.split(separator: "_").map(String.init) + [Parse.project(comment), "secret", "password", "секрет", "пароль"]
+        a.keywords = id.split(separator: "_").map(String.init) + [Parse.project(comment), "secret", "password", "секрет", "пароль",
+            "Geheimnis", "Passwort", "mot de passe", "secreto", "contraseña", "segreto", "segredo", "palavra-passe", "sekret", "hasło"]
         return a
     }
 }
@@ -127,7 +128,19 @@ struct SecretShortcuts: AppShortcutsProvider {
                     phrases: ["Copy \(\.$secret) with \(.applicationName)",
                               "Copy a secret with \(.applicationName)",
                               "Скопировать \(\.$secret) в \(.applicationName)",
-                              "Скопировать секрет в \(.applicationName)"],
+                              "Скопировать секрет в \(.applicationName)",
+                              "Kopiere \(\.$secret) mit \(.applicationName)",
+                              "Kopiere ein Geheimnis mit \(.applicationName)",
+                              "Copier \(\.$secret) avec \(.applicationName)",
+                              "Copier un secret avec \(.applicationName)",
+                              "Copiar \(\.$secret) con \(.applicationName)",
+                              "Copiar un secreto con \(.applicationName)",
+                              "Copia \(\.$secret) con \(.applicationName)",
+                              "Copia un segreto con \(.applicationName)",
+                              "Copiar \(\.$secret) com \(.applicationName)",
+                              "Copiar um segredo com \(.applicationName)",
+                              "Skopiuj \(\.$secret) w \(.applicationName)",
+                              "Skopiuj sekret w \(.applicationName)"],
                     shortTitle: "Copy Secret",
                     systemImageName: "key.fill")
     }

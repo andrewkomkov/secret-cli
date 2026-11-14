@@ -1,0 +1,93 @@
+{
+  "extName": {
+    "message": "Secret Cookie Bridge"
+  },
+  "extDescription": {
+    "message": "Invia i cookie del sito attuale al comando locale secret come cookie jar."
+  },
+  "actionTitle": {
+    "message": "Invia i cookie a secret"
+  },
+  "sendButton": {
+    "message": "Invia i cookie a secret"
+  },
+  "settingsLink": {
+    "message": "Impostazioni"
+  },
+  "settingsTitle": {
+    "message": "Secret Cookie Bridge: impostazioni"
+  },
+  "tokenLabel": {
+    "message": "Token (da $CMD$)",
+    "placeholders": {
+      "cmd": {
+        "content": "$1"
+      }
+    }
+  },
+  "nameLabel": {
+    "message": "Nome del segreto (UPPER_SNAKE_CASE)"
+  },
+  "portLabel": {
+    "message": "Porta"
+  },
+  "saveButton": {
+    "message": "Salva"
+  },
+  "errNoConfig": {
+    "message": "Prima imposta il token e il nome del segreto nelle impostazioni."
+  },
+  "errNoPage": {
+    "message": "Prima apri una pagina web."
+  },
+  "errNoCookies": {
+    "message": "Nessun cookie per $HOST$. Controlla l’accesso dell’estensione al sito in Safari.",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "stored": {
+    "message": "$COUNT$ cookie di $HOST$ salvati come $NAME$.",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "host": {
+        "content": "$2"
+      },
+      "name": {
+        "content": "$3"
+      }
+    }
+  },
+  "errRefused": {
+    "message": "Il daemon ha rifiutato: HTTP $STATUS$ $TEXT$",
+    "placeholders": {
+      "status": {
+        "content": "$1"
+      },
+      "text": {
+        "content": "$2"
+      }
+    }
+  },
+  "errFailed": {
+    "message": "Errore: $MSG$\nIl daemon è in esecuzione? (secret cookie bridge start)",
+    "placeholders": {
+      "msg": {
+        "content": "$1"
+      }
+    }
+  },
+  "errName": {
+    "message": "Il nome deve corrispondere a [A-Za-z_][A-Za-z0-9_.-]*."
+  },
+  "errPort": {
+    "message": "La porta deve essere tra 1 e 65535."
+  },
+  "saved": {
+    "message": "Salvato."
+  }
+}

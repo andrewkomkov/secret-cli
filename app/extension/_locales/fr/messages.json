@@ -1,0 +1,93 @@
+{
+  "extName": {
+    "message": "Secret Cookie Bridge"
+  },
+  "extDescription": {
+    "message": "Envoie les cookies du site actuel à la commande locale secret sous forme de cookie jar."
+  },
+  "actionTitle": {
+    "message": "Envoyer les cookies à secret"
+  },
+  "sendButton": {
+    "message": "Envoyer les cookies à secret"
+  },
+  "settingsLink": {
+    "message": "Réglages"
+  },
+  "settingsTitle": {
+    "message": "Secret Cookie Bridge : réglages"
+  },
+  "tokenLabel": {
+    "message": "Jeton (de $CMD$)",
+    "placeholders": {
+      "cmd": {
+        "content": "$1"
+      }
+    }
+  },
+  "nameLabel": {
+    "message": "Nom du secret (UPPER_SNAKE_CASE)"
+  },
+  "portLabel": {
+    "message": "Port"
+  },
+  "saveButton": {
+    "message": "Enregistrer"
+  },
+  "errNoConfig": {
+    "message": "Indiquez d’abord le jeton et le nom du secret dans les réglages."
+  },
+  "errNoPage": {
+    "message": "Ouvrez d’abord une page web."
+  },
+  "errNoCookies": {
+    "message": "Aucun cookie pour $HOST$. Vérifiez l’accès de l’extension au site dans Safari.",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "stored": {
+    "message": "$COUNT$ cookies de $HOST$ enregistrés sous $NAME$.",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "host": {
+        "content": "$2"
+      },
+      "name": {
+        "content": "$3"
+      }
+    }
+  },
+  "errRefused": {
+    "message": "Le daemon a refusé : HTTP $STATUS$ $TEXT$",
+    "placeholders": {
+      "status": {
+        "content": "$1"
+      },
+      "text": {
+        "content": "$2"
+      }
+    }
+  },
+  "errFailed": {
+    "message": "Échec : $MSG$\nLe daemon est-il lancé ? (secret cookie bridge start)",
+    "placeholders": {
+      "msg": {
+        "content": "$1"
+      }
+    }
+  },
+  "errName": {
+    "message": "Le nom doit correspondre à [A-Za-z_][A-Za-z0-9_.-]*."
+  },
+  "errPort": {
+    "message": "Le port doit être compris entre 1 et 65535."
+  },
+  "saved": {
+    "message": "Enregistré."
+  }
+}
