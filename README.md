@@ -135,6 +135,7 @@ Code hook stops the command.
 | **Touch ID** | in the Secure Enclave store the key from the chip works only after Touch ID or Apple Watch |
 | **Clipboard** | `secret copy` clears the clipboard after 30 seconds |
 | **Expiry** | `-x 2026-12-31`, `secret ls --expiring`, a warning on use |
+| **Search by meaning** | `secret ls --ask "smtp of billing"`: the on-device model of macOS 27, names and comments only, no network |
 | **Backup** | `secret export` / `restore`: one file, AES-256 under a separate password |
 | **Menu bar app** | SecretBar: ⌥⌘S quick search, Spotlight, a card for each secret, activity |
 | **Completion** | secret names on Tab in zsh, without a request to the store |
@@ -260,6 +261,7 @@ the shell that runs `secret run` would expand it to empty too early.
 | `secret expire NAME YYYY-MM-DD\|none` | set or remove the expiry date |
 | `secret ls [-l]` | names; `-l` adds the expiry date and the comment |
 | `secret ls --expiring [DAYS]` | expired and expiring within DAYS days (default 30) |
+| `secret ls --ask QUERY [-l]` | names that fit QUERY in any language ("database password of the shop"); the on-device model of macOS 27 (`fm`) sees only names and comments |
 | `secret has NAME` | exit 0 if the secret exists; prints nothing |
 | `secret get NAME` | print the value |
 | `secret copy NAME [SECONDS]` | to the clipboard; after SECONDS (default 30) the clipboard is cleared if it still holds the value |

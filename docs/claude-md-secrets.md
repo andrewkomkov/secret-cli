@@ -21,7 +21,8 @@ to `bin/secret` in the clone. Make changes to the command in that repository, ru
 - Each item has a comment that tells what the secret is and where it is used.
 
 To find a secret, run `secret ls -l`. It shows the names and the comments, not the values. Then
-use the name. Do NOT guess a name.
+use the name. Do NOT guess a name. With many secrets, `secret ls --ask "QUERY" -l` finds names by
+meaning with the on-device model of macOS 27. Check the names that it gives in `secret ls -l`.
 
 ## How to use a secret
 
