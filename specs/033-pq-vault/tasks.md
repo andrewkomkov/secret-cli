@@ -11,4 +11,4 @@
 - [x] T007 тесты PQ в `tests/run.sh`, пропуск при `unsupported`
 - [x] T008 README, README.ru, сайт: формат хранилища и `touchid pq`
 - [x] T009 2026-11-11 CI PR #11: `macos-15` (Swift 6.1.2) пишет `skip 033`, 525 из 525; `macos-26` (Swift 6.3.3) — тесты 033 идут и проходят
-- [ ] T010 ручная SC-003 на Mac владельца: `secret touchid pq`, одно окно Touch ID, `run` работает. Дата — при выполнении
+- [x] T010 ручная SC-003, 2026-11-14: на Mac владельца, хелпер с проверкой 036. `secret touchid pq`: одно окно Touch ID, 160 значений. `run` с тремя именами работает, статус `post-quantum: on`

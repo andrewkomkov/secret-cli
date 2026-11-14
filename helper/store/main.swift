@@ -1071,6 +1071,15 @@ func upgradePQ() {
             for (i, v) in plain { d.items[i].v = try seal(v, d.items[i].n, k.pub, k.kpub) }
             if !isV2(d.check) { d.check = try seal(checkText, checkName, k.pub, k.kpub) }
             if let m = m { h.wm = try seal(m, fileKeyName, k.pub, k.kpub) }
+            // 036: open each new value with the same context before the write. A key that seals
+            // but does not open must not leave values that nobody can read: the file stays as it was.
+            for (i, v) in plain where try unseal(d.items[i].v, d.items[i].n, k.se, k.kse, c) != v {
+                throw VaultError.damaged("touchid pq: \(d.items[i].n) does not open after sealing, nothing changed")
+            }
+            guard try unseal(d.check, checkName, k.se, k.kse, c) == checkText,
+                  try m.map({ try unseal(h.wm, fileKeyName, k.se, k.kse, c) == $0 }) ?? true else {
+                throw VaultError.damaged("touchid pq: the check value does not open after sealing, nothing changed")
+            }
             writeFile(try joinFile(h, d, k.fileKey))
             try storeKeys(k, new: false)
             eventLog("touchid pq: \(plain.count) values sealed again")
