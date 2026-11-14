@@ -1,55 +1,57 @@
-# Research: Аренда секретов для агентов
+# Research: Secret lease for agents
 
-## R1. Где держать аренду
+## R1. Where to hold the lease
 
-- **Decision**: в процессе-агенте `secret-vault agent`, рядом с кэшем grace.
-- **Rationale**: память агента уже закрыта hardened runtime (принцип II). Сокет агента уже
-  проверяет `getpeereid`. Если сделать второй процесс, будет второй сокет и вторая точка атаки.
+- **Decision**: in the agent process `secret-vault agent`, next to the grace cache.
+- **Rationale**: the agent memory is already closed by the hardened runtime (principle II). The
+  agent socket already checks `getpeereid`. A second process would mean a second socket and a
+  second point of attack.
 - **Alternatives considered**:
-  - Файл с зашифрованными значениями. Ключ этого файла надо хранить без Touch ID. Это и есть
-    хранилище без защиты.
-  - Отдельный процесс аренды. Кода больше, защита та же.
+  - A file with encrypted values. The key of this file must be kept without Touch ID. That is a
+    store without protection.
+  - A separate lease process. More code, the same protection.
 
-## R2. Чтение при заблокированном экране
+## R2. Read while the screen is locked
 
-- **Decision**: значения аренды агент читает в момент Touch ID и держит в памяти. После
-  блокировки экрана агенту ключ Secure Enclave больше не нужен.
-- **Rationale**: ключ Secure Enclave с `WhenUnlockedThisDeviceOnly` и `.userPresence` на
-  заблокированном Mac отказывает. Окно Touch ID на заблокированном экране никто не видит.
+- **Decision**: the agent reads the lease values at the moment of Touch ID and keeps them in
+  memory. After a screen lock, the agent no longer needs the Secure Enclave key.
+- **Rationale**: a Secure Enclave key with `WhenUnlockedThisDeviceOnly` and `.userPresence`
+  refuses on a locked Mac. Nobody sees a Touch ID window on a locked screen.
 - **Alternatives considered**:
-  - Ключ без `.userPresence` для секретов агента. Это нарушает принцип II.
-  - Подтверждение с телефона. Ключ Secure Enclave при блокировке всё равно отказывает.
+  - A key without `.userPresence` for agent secrets. This breaks principle II.
+  - Confirmation from a phone. The Secure Enclave key still refuses during a lock.
 
-## R3. Что видит агент при блокировке экрана
+## R3. What the agent sees during a screen lock
 
-- **Decision**: агент проверяет `screenLocked()` на каждый `read`. Если экран заблокирован и
-  имени нет в аренде, агент сразу отвечает `err 6 not leased: A, B` и пропускает
+- **Decision**: the agent checks `screenLocked()` on each `read`. If the screen is locked and
+  the name is not in the lease, the agent at once answers `err 6 not leased: A, B` and skips
   `confirmedContext`.
-- **Rationale**: сейчас команда ждёт окно, которое никто не видит.
+- **Rationale**: now the command waits for a window that nobody sees.
 
-## R4. Изменение секрета во время аренды
+## R4. Change of a secret during the lease
 
-- **Decision**: в таблице аренды вместе со значением лежит постоянная ссылка `r` записи. При
-  чтении агент сравнивает её с файлом. Если ссылка другая или записи нет, имя выходит из аренды.
-- **Rationale**: так уже работает кэш grace (010 R11). Новое значение агент может прочитать
-  только после Touch ID. Старое значение отдавать нельзя.
+- **Decision**: the lease table keeps the permanent reference `r` of the record next to the
+  value. On read, the agent compares it with the file. If the reference is different or the
+  record is gone, the name leaves the lease.
+- **Rationale**: the grace cache already works this way (010 R11). The agent can read a new
+  value only after Touch ID. The old value must not be given.
 
-## R5. Несколько аренд
+## R5. Several leases
 
-- **Decision**: аренды складываются. У каждого имени свой конец, для повторного имени —
-  поздний конец.
-- **Rationale**: два агента в двух проектах просят разные наборы. Если новая аренда заменяет
-  старую, первый агент теряет свои секреты.
+- **Decision**: leases add up. Each name has its own end; for a repeated name, the later end.
+- **Rationale**: two agents in two projects request different sets. If a new lease replaced the
+  old one, the first agent would lose its secrets.
 
-## R6. Пометка в журнале
+## R6. Mark in the log
 
-- **Decision**: ответ агента на `read` получает третье поле: для каждого имени `l` (аренда)
-  или `g` (grace или Touch ID). `secret-vault read` пишет его в stderr строкой
-  `source: l,g`. `bin/secret` пишет в журнал деталь `lease` для имён из аренды.
-- **Rationale**: протокол между `bin/secret` и helper внутренний, обе стороны в репе.
+- **Decision**: the agent answer to `read` gets a third field: for each name `l` (lease)
+  or `g` (grace or Touch ID). `secret-vault read` writes it to stderr as the line
+  `source: l,g`. `bin/secret` writes the detail `lease` to the log for leased names.
+- **Rationale**: the protocol between `bin/secret` and the helper is internal; both sides are in
+  the repo.
 
-## R7. Тест блокировки
+## R7. Lock test
 
-- **Decision**: в тестовой сборке `screenLocked()` читает флаг агента. `test-lock` ставит флаг
-  и заканчивает grace, `test-unlock` снимает флаг, `test-sleep` заканчивает grace как сон.
-- **Rationale**: принцип IV: тест проходит без окон и с открытым экраном.
+- **Decision**: in the test build, `screenLocked()` reads an agent flag. `test-lock` sets the
+  flag and ends grace, `test-unlock` clears the flag, `test-sleep` ends grace like a sleep.
+- **Rationale**: principle IV: the test passes without windows and with an unlocked screen.

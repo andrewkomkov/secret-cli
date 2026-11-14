@@ -1,9 +1,9 @@
-# Tasks: Шифрованный бэкап
+# Tasks: Encrypted backup
 
 **Input**: `specs/003-backup/` (spec.md, plan.md)
 
-- [x] T001 [US1] `secret export [-f] [--pass-stdin] FILE`: сбор записей, шифрование, права 600, запись в журнал
-- [x] T002 [US2] `secret restore [-f] [--pass-stdin] FILE`: расшифровка, проверка заголовка и sha256, запись, пропуск существующих
-- [x] T003 Тесты: export → restore в другой keychain (SC-001), нет открытого текста в файле (SC-002), неверный пароль, испорченный файл, `-f`, короткий пароль, отказ перезаписать файл **2026-10-02**: 20 проверок. Нашлась ошибка: пустой комментарий сдвигал срок в поле комментария; пустое поле теперь `-`
-- [ ] T004 Ручная проверка: export с паролем в окне macOS
-- [x] T005 README, `secret help`, `docs/claude-md-secrets.md`, раздел Secrets в `~/.claude/CLAUDE.md`
+- [x] T001 [US1] `secret export [-f] [--pass-stdin] FILE`: collect the items, encrypt, mode 600, log entry
+- [x] T002 [US2] `secret restore [-f] [--pass-stdin] FILE`: decrypt, check the header and sha256, write, skip the existing ones
+- [x] T003 Tests: export → restore into another keychain (SC-001), no plain text in the file (SC-002), wrong password, damaged file, `-f`, short password, refusal to overwrite the file **2026-10-02**: 20 checks. A bug was found: an empty comment moved the expiry into the comment field; an empty field is now `-`
+- [ ] T004 Manual check: export with the password in a macOS dialog
+- [x] T005 README, `secret help`, `docs/claude-md-secrets.md`, the Secrets section in `~/.claude/CLAUDE.md`

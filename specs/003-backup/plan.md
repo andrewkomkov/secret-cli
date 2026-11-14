@@ -1,24 +1,24 @@
-# Implementation Plan: Шифрованный бэкап
+# Implementation Plan: Encrypted backup
 
 **Branch**: `003-backup` | **Date**: 2026-10-02 | **Spec**: [spec.md](spec.md)
 
-## Summary <!-- slop: заголовок задан шаблоном spec-kit -->
+## Summary <!-- slop: the heading comes from the spec-kit template -->
 
-`export` собирает строки в переменной bash (в памяти) и отдаёт их `openssl` через pipe. Пароль
-идёт в `-pass fd:3` из подстановки процесса `3< <(printf ...)`: это pipe, а не временный файл,
-как у here-string в bash 3.2. `restore` расшифровывает в переменную, проверяет заголовок и
-sha256 и только потом пишет записи через `write_item`.
+`export` collects the lines in a bash variable (in memory) and gives them to `openssl` through a pipe. The password
+goes to `-pass fd:3` from the process substitution `3< <(printf ...)`: this is a pipe, not a temporary file
+as with a here-string in bash 3.2. `restore` decrypts into a variable, checks the header and
+sha256, and only then writes the items with `write_item`.
 
 ## Constitution Check
 
-| Принцип | Как соблюдается |
+| Principle | How it is met |
 |---|---|
-| I | значения только внутри шифрованного файла; пароль не в `argv` и не в окружении |
-| II | пароль бэкапа вводит человек (терминал или окно); `--pass-stdin` — явный флаг |
-| III | `openssl` (LibreSSL), `xxd`, `shasum` из macOS |
-| IV | тест на двух временных keychain |
-| V | новые команды, старые не меняются |
+| I | values only inside the encrypted file; the password is not in `argv` and not in the environment |
+| II | a human types the backup password (terminal or dialog); `--pass-stdin` is an explicit flag |
+| III | `openssl` (LibreSSL), `xxd`, `shasum` from macOS |
+| IV | a test on two temporary keychains |
+| V | new commands, the old ones do not change |
 
 ## Complexity Tracking
 
-Отступлений нет.
+No deviations.

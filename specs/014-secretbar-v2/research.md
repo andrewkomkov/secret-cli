@@ -1,6 +1,6 @@
 # Research: SecretBar 2
 
-| # | Проверка | Результат |
+| # | Check | Result |
 |---|---|---|
-| R15 | App Intents и Spotlight для SecretBar, 2026-10-07 | с подписью ad-hoc `linkd` пишет `sandbox_extension_issue_file failed … Operation not permitted` и `Bundle did not provide any metadata sources`, в `~/Applications` и в `/Applications` одинаково. С подписью Apple Development (Personal Team, без profile) `linkd` принимает соединение приложения |
-| R16 | Снимки `--snapshot` | `cacheDisplay` смешивает темы слоёв: в тёмной теме часть областей белая. `layer.render(in:)` с темой, заданной до первого окна, даёт верную тёмную тему. Боковая панель с эффектом прозрачности в снимок слоёв не попадает |
+| R15 | App Intents and Spotlight for SecretBar, 2026-10-07 | with an ad-hoc signature, `linkd` writes `sandbox_extension_issue_file failed … Operation not permitted` and `Bundle did not provide any metadata sources`, the same in `~/Applications` and in `/Applications`. With an Apple Development signature (Personal Team, no profile), `linkd` accepts the connection of the app |
+| R16 | `--snapshot` images | `cacheDisplay` mixes the themes of the layers: in the dark theme, some areas are white. `layer.render(in:)` with the theme set before the first window gives the correct dark theme. The sidebar with the transparency effect does not go into the layer snapshot |

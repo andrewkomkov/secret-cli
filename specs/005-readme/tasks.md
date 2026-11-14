@@ -1,5 +1,5 @@
 # Tasks: README
 
-- [x] T001 Новый `README.md` по spec.md
-- [x] T002 Проверка SC-001: каждая команда из `secret help` есть в README
-- [x] T003 Проверка SC-002: число тестов в значке
+- [x] T001 New `README.md` per spec.md
+- [x] T002 Check SC-001: each command from `secret help` is in the README
+- [x] T003 Check SC-002: the number of tests in the badge

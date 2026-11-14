@@ -1,26 +1,28 @@
-# Implementation Plan: SecretBar в системном поиске Siri и Spotlight
+# Implementation Plan: SecretBar in the Siri and Spotlight system search
 
 **Spec**: `specs/035-secretbar-system-search/spec.md`
 
 ## Technical Context
 
-- `app/SecretBar/Intents.swift`: `SearchSecretsIntent` (схема `.system.search`, `searchScopes`
-  `[.general]`, `criteria: StringSearchCriteria`). `perform` зовёт `Navigation.shared.search`.
-- `Intents.swift`: `extension SecretQuery: IndexedEntityQuery` под `#if compiler(>=6.4)` и
-  `@available(macOS 27, *)`. Оба метода зовут `Store.shared.updateSpotlight()`: он сам смотрит на
-  переключатель.
-- `QuickPanel.swift`, `Navigation`: `searchPending: String?`, `search(_:)` открывает главное окно.
-- `MainWindow.swift`: `takeSearchRequest()` на `onAppear` и `onChange(of: nav.searchPending)`
-  ставит текст в `query`.
-- `Localizable.xcstrings`: новые строки интерфейса получают `ru`.
+- `app/SecretBar/Intents.swift`: `SearchSecretsIntent` (schema `.system.search`, `searchScopes`
+  `[.general]`, `criteria: StringSearchCriteria`). `perform` calls `Navigation.shared.search`.
+- `Intents.swift`: `extension SecretQuery: IndexedEntityQuery` under `#if compiler(>=6.4)` and
+  `@available(macOS 27, *)`. Both methods call `Store.shared.updateSpotlight()`: it checks the
+  switch itself.
+- `QuickPanel.swift`, `Navigation`: `searchPending: String?`, `search(_:)` opens the main window.
+- `MainWindow.swift`: `takeSearchRequest()` on `onAppear` and `onChange(of: nav.searchPending)`
+  puts the text into `query`.
+- `Localizable.xcstrings`: new interface strings get `ru`.
 
 ## Constitution Check
 
-- **I**: в индекс и поиск идут только имена и комментарии.
-- **II–III**: SecretBar зовёт только `bin/secret` и helper. Новых прав и entitlements нет.
-- **IV**: `tests/run.sh` проверяет сборку SecretBar, как раньше. Поиск через Siri — ручная проверка.
-- **V**: новое действие. Старые действия и переключатель не меняются.
+- **I**: only names and comments go into the index and the search.
+- **II–III**: SecretBar calls only `bin/secret` and the helper. No new permissions and
+  entitlements.
+- **IV**: `tests/run.sh` checks the SecretBar build, as before. The search through Siri is a
+  manual check.
+- **V**: a new action. The old actions and the switch do not change.
 
 ## Complexity Tracking
 
-Нет отступлений.
+No deviations.

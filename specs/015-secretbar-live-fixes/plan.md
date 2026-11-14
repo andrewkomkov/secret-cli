@@ -1,26 +1,26 @@
-# Implementation Plan: SecretBar — исправления после живой проверки
+# Implementation Plan: SecretBar — fixes after the live check
 
 **Spec**: `specs/015-secretbar-live-fixes/spec.md`
 
 ## Technical Context
 
-SwiftUI, macOS 26, `app/SecretBar`. Изменения только в приложении и в `tests/run.sh`.
+SwiftUI, macOS 26, `app/SecretBar`. Changes only in the app and in `tests/run.sh`.
 
-- Раскладка: таблица соответствия клавиш ЙЦУКЕН и QWERTY (`Parse.swapLayout`). `Store.filter`
-  ищет исходную строку, затем переведённую; дубликаты отбрасываются.
-- Ссылки: `Parse.references` возвращает пары ключ → имя; `Store.envKeys` — ключ для имени.
-- Карточка: выбор берётся из текущего списка, а не из всех секретов.
-- Пустой список: `ContentUnavailableView` растягивается по высоте, поле поиска остаётся сверху.
-- `--spotlight-check`: `CSSearchQuery` с `kMDItemDisplayName == "*"` в индексе приложения.
-- `--snapshot`: экраны «пустой раздел» и «300 секретов» на демо-данных.
+- Layout: a key map between Russian JCUKEN and QWERTY (`Parse.swapLayout`). `Store.filter`
+  searches for the source string, then for the converted one; duplicates are dropped.
+- References: `Parse.references` returns key → name pairs; `Store.envKeys` gives the key for a name.
+- Card: the selection comes from the current list, not from all secrets.
+- Empty list: `ContentUnavailableView` stretches in height, the search field stays at the top.
+- `--spotlight-check`: `CSSearchQuery` with `kMDItemDisplayName == "*"` in the index of the app.
+- `--snapshot`: the screens "empty section" and "300 secrets" on demo data.
 
 ## Constitution Check
 
-- I: значения не читаются, индекс Spotlight по-прежнему только имена и комментарии.
-- III: только системные фреймворки.
-- IV: проверки в `--selftest` и `tests/run.sh`; живая проверка записывается в `tasks.md` с датой.
-- V: команды `secret` не меняются.
+- I: values are not read, the Spotlight index still holds only names and comments.
+- III: only system frameworks.
+- IV: checks in `--selftest` and `tests/run.sh`; the live check is recorded in `tasks.md` with a date.
+- V: the `secret` commands do not change.
 
 ## Complexity Tracking
 
-Нет отступлений.
+No deviations.

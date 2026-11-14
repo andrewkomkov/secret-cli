@@ -1,14 +1,14 @@
-# Quickstart: проверка хранилища data protection keychain
+# Quickstart: check of the data protection keychain store
 
-Нужно: Xcode, Apple ID в Xcode → Settings → Accounts (Personal Team).
+Necessary: Xcode, an Apple ID in Xcode → Settings → Accounts (Personal Team).
 
-1. `./install.sh` — в выводе `store helper: build/SecretStore.app (profile until ...)`.
-2. `tests/run.sh` — каждый тест выводит `ok`, раздел `009` не пропущен.
-3. `secret migrate --backup ~/secrets-before-dp.bak` — пароль копии, один Touch ID на чтение
-   старых значений, один Touch ID на сверку. Вывод `migrate: N secrets in the data protection store`.
-4. `secret ls -l` — без Touch ID, те же имена, комментарии, сроки.
-5. `secret get NAME` — один Touch ID. Второй `get` в течение grace — без вопроса.
-6. `secret lock`, затем `secret get NAME` — снова Touch ID.
-7. `secret touchid status` — `store: dp`, grace, срок profile.
-8. `./install.sh --launchd` — `launchctl print gui/$UID/secretcli.renew` показывает задачу.
-9. Откат: `secret migrate --back` — записи снова в `secrets.keychain-db`.
+1. `./install.sh`: the output has `store helper: build/SecretStore.app (profile until ...)`.
+2. `tests/run.sh`: each test prints `ok`, the section `009` is not skipped.
+3. `secret migrate --backup ~/secrets-before-dp.bak`: the backup password, one Touch ID to read
+   the old values, one Touch ID for the comparison. Output `migrate: N secrets in the data protection store`.
+4. `secret ls -l`: without Touch ID, the same names, comments, expiry dates.
+5. `secret get NAME`: one Touch ID. A second `get` within grace: no question.
+6. `secret lock`, then `secret get NAME`: Touch ID again.
+7. `secret touchid status`: `store: dp`, grace, profile expiry date.
+8. `./install.sh --launchd`: `launchctl print gui/$UID/secretcli.renew` shows the job.
+9. Rollback: `secret migrate --back`: the items are in `secrets.keychain-db` again.

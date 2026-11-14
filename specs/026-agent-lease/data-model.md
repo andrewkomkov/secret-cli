@@ -1,19 +1,19 @@
-# Data Model: Аренда секретов для агентов
+# Data Model: Secret lease for agents
 
-## Аренда (в памяти агента)
+## Lease (in the agent memory)
 
-| Поле | Тип | Правило |
+| Field | Type | Rule |
 |---|---|---|
-| name | String | есть в хранилище, не `__secret-cli.*` |
-| ref | Data | постоянная ссылка записи на момент Touch ID |
-| value | Data | значение; не пишется на диск и в журнал |
-| end | TimeInterval | монотонные часы; `≤ confirmedAt + 24h` |
+| name | String | exists in the store, not `__secret-cli.*` |
+| ref | Data | permanent reference of the record at the moment of Touch ID |
+| value | Data | value; not written to disk or to the log |
+| end | TimeInterval | monotonic clocks; `≤ confirmedAt + 24h` |
 
-## Переходы
+## Transitions
 
 ```text
-нет аренды --lease + Touch ID--> аренда
-аренда --end прошёл | revoke | lock | ref другой | записи нет--> нет аренды (для имени или всех)
-аренда --блокировка экрана | сон--> аренда (grace заканчивается)
-агент: grace нет и аренды нет --> процесс завершается
+no lease --lease + Touch ID--> lease
+lease --end passed | revoke | lock | ref different | record gone--> no lease (for the name or all)
+lease --screen lock | sleep--> lease (grace ends)
+agent: no grace and no lease --> the process exits
 ```

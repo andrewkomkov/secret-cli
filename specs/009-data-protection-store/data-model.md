@@ -1,24 +1,24 @@
-# Data Model: хранилище data protection keychain
+# Data Model: data protection keychain store
 
-**Запись** — generic password, `kSecUseDataProtectionKeychain`.
+**Item**: generic password, `kSecUseDataProtectionKeychain`.
 
-| Атрибут | Значение |
+| Attribute | Value |
 |---|---|
 | `kSecAttrAccessGroup` | `TEAM.secretcli.<team>.store` (Test: `TEAM.secretcli.<team>.store-test`) |
-| `kSecAttrAccount` | `secret-cli` (Test: `secret-cli-test.<прогон>`) |
-| `kSecAttrService` | имя, `^[A-Za-z_][A-Za-z0-9_.-]*$` |
-| `kSecAttrLabel` | имя |
+| `kSecAttrAccount` | `secret-cli` (Test: `secret-cli-test.<run>`) |
+| `kSecAttrService` | name, `^[A-Za-z_][A-Za-z0-9_.-]*$` |
+| `kSecAttrLabel` | name |
 | `kSecAttrDescription` | `secret-cli` |
-| `kSecAttrComment` | комментарий, одна строка |
-| `kSecAttrGeneric` | `expires=YYYY-MM-DD` или пусто |
-| `kSecAttrAccessControl` | `WhenUnlockedThisDeviceOnly` + `.userPresence` (Test: без него) |
-| `kSecValueData` | значение, одна строка UTF-8 |
+| `kSecAttrComment` | comment, one line |
+| `kSecAttrGeneric` | `expires=YYYY-MM-DD` or empty |
+| `kSecAttrAccessControl` | `WhenUnlockedThisDeviceOnly` + `.userPresence` (Test: without it) |
+| `kSecValueData` | value, one line of UTF-8 |
 
-**Политика** — запись `__secret-cli.policy`: значение `v1 grace=N`, комментарий `grace=N` для
-показа. Агент верит только значению, которое прочитал после Touch ID.
+**Policy**: the item `__secret-cli.policy`: value `v1 grace=N`, comment `grace=N` for display.
+The agent trusts only the value that it read after Touch ID.
 
-**Файл режима** — `~/.local/state/secret/store`, содержимое `dp`. Нет файла — файловый keychain.
+**Mode file**: `~/.local/state/secret/store`, content `dp`. No file means the file keychain.
 
-**Срок helper** — `build/SecretStore.expires`: секунды Unix окончания profile, пишет `install.sh`.
+**Helper expiry**: `build/SecretStore.expires`: Unix seconds of the profile end, written by `install.sh`.
 
-**Переходы режима**: `file` → `migrate --backup FILE` → `dp` → `migrate --back` → `file`.
+**Mode transitions**: `file` → `migrate --backup FILE` → `dp` → `migrate --back` → `file`.

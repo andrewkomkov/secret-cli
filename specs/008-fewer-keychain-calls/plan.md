@@ -1,21 +1,21 @@
-# Implementation Plan: Меньше вызовов keychain
+# Implementation Plan: Fewer keychain calls
 
 **Branch**: `008-fewer-keychain-calls` | **Date**: 2026-10-02 | **Spec**: [spec.md](spec.md)
 
-## Summary <!-- slop: заголовок задан шаблоном spec-kit -->
+## Summary <!-- slop: the heading comes from the spec-kit template -->
 
-Переменная `ITEMS` хранит вывод `list_items` (TSV: имя, комментарий, срок). Её заполняет первый
-вызов `items_cached`, а сбрасывает каждая запись и удаление. `item_known`, `get_comment`,
-`get_expiry` читают из неё через `awk`. Переменная `BATCH=1` откладывает `refresh_names` до
-конца пакетной команды. В `set` проверка после записи — прямой `security find-generic-password`.
+The variable `ITEMS` keeps the output of `list_items` (TSV: name, comment, expiry). The first
+call of `items_cached` fills it, and each write and deletion clears it. `item_known`, `get_comment`,
+`get_expiry` read from it with `awk`. The variable `BATCH=1` puts off `refresh_names` until
+the end of a batch command. In `set`, the check after a write is a direct `security find-generic-password`.
 
 ## Constitution Check
 
-| Принцип | Как соблюдается |
+| Principle | How it is met |
 |---|---|
-| I | в кэше только атрибуты, значений нет |
-| V | вывод команд не меняется |
+| I | the cache has only attributes, no values |
+| V | the command output does not change |
 
 ## Complexity Tracking
 
-Отступлений нет.
+No deviations.

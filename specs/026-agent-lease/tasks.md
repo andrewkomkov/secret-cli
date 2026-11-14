@@ -1,68 +1,68 @@
-# Tasks: Аренда секретов для агентов
+# Tasks: Secret lease for agents
 
 **Input**: `specs/026-agent-lease/` (spec.md, plan.md, research.md, contracts/cli.md, data-model.md)
 
-## Phase 1: Конституция
+## Phase 1: Constitution
 
-<!-- утр-100: 4.2 — строка задачи spec-kit: файл, действие и условия в одном пункте -->
-- [x] T001 `.specify/memory/constitution.md`: принцип II — правило аренды (явный набор имён, новый Touch ID на каждую аренду, срок до 24 часов, блокировка и сон заканчивают только grace, `lock` заканчивает и аренду). Версия 2.4.0, отдельный коммит `docs(constitution): ...` до кода
+<!-- utr-100: 4.2 — spec-kit task line: file, action and conditions in one item -->
+- [x] T001 `.specify/memory/constitution.md`: principle II — lease rule (explicit set of names, a new Touch ID for each lease, a term of up to 24 hours, a lock and a sleep end only grace, `lock` also ends the lease). Version 2.4.0, a separate commit `docs(constitution): ...` before the code
 
-## Phase 2: Агент helper (основа для всех историй)
+## Phase 2: Helper agent (base for all stories)
 
-<!-- утр-100: 4.2, 8.1 — строки задач spec-kit: файл, действие и условия в одном пункте -->
-- [x] T002 `helper/store/main.swift`: таблица аренды в `Agent`: `name → (ref, value, end)`, предел `maxLease` 24 часа, в сборке `Test` — из `SECRET_TEST_MAX_LEASE`
-- [x] T003 `helper/store/main.swift`: `endGrace()` вместо `stop()` при блокировке экрана и сне: закрыть контекст, очистить кэш grace. Если аренды нет, агент завершается, как раньше. `lock` по-прежнему завершает агент. Проверка `check()`: конец каждого имени аренды по `CLOCK_MONOTONIC`
-- [x] T004 `helper/store/main.swift`: сборка `Test` — флаг блокировки агента для `screenLocked()`. `test-lock` ставит флаг и заканчивает grace, `test-unlock` снимает флаг, `test-sleep` заканчивает grace (research R7)
+<!-- utr-100: 4.2, 8.1 — spec-kit task lines: file, action and conditions in one item -->
+- [x] T002 `helper/store/main.swift`: lease table in `Agent`: `name → (ref, value, end)`, limit `maxLease` 24 hours, in the `Test` build from `SECRET_TEST_MAX_LEASE`
+- [x] T003 `helper/store/main.swift`: `endGrace()` instead of `stop()` on a screen lock and a sleep: close the context, clear the grace cache. If there is no lease, the agent exits, as before. `lock` still stops the agent. Check `check()`: the end of each leased name by `CLOCK_MONOTONIC`
+- [x] T004 `helper/store/main.swift`: `Test` build — agent lock flag for `screenLocked()`. `test-lock` sets the flag and ends grace, `test-unlock` clears the flag, `test-sleep` ends grace (research R7)
 
-## Phase 3: User Story 1 — агент работает при заблокированном экране (P1)
+## Phase 3: User Story 1 — the agent works while the screen is locked (P1)
 
-**Independent Test**: аренда A, затем `test-lock`. `secret run A` работает без Touch ID.
-`secret run B` сразу даёт `not leased: B`.
+**Independent Test**: lease A, then `test-lock`. `secret run A` works without Touch ID.
+`secret run B` at once gives `not leased: B`.
 
-- [x] T005 [US1] `helper/store/main.swift`: запрос `read` сначала смотрит таблицу аренды (та же ссылка `r` и срок не прошёл). Ответ получает поле источников `l`/`g` (research R6)
-- [x] T006 [US1] `helper/store/main.swift`: при заблокированном экране имена вне аренды дают `err 6 not leased: A, B` без `confirmedContext` (FR-007)
-- [x] T007 [US1] `helper/store/main.swift`: команда `read` пишет источники в stderr строкой `source: ...`. `bin/secret` в `run`/`get` пишет в журнал деталь `lease` для имён из аренды и не показывает эту строку (FR-009)
+- [x] T005 [US1] `helper/store/main.swift`: the `read` request first looks at the lease table (the same reference `r` and the term has not passed). The answer gets a sources field `l`/`g` (research R6)
+- [x] T006 [US1] `helper/store/main.swift`: while the screen is locked, names outside the lease give `err 6 not leased: A, B` without `confirmedContext` (FR-007)
+- [x] T007 [US1] `helper/store/main.swift`: the `read` command writes the sources to stderr as a line `source: ...`. `bin/secret` in `run`/`get` writes the detail `lease` to the log for leased names and does not show this line (FR-009)
 
-## Phase 4: User Story 2 — запрос аренды (P1)
+## Phase 4: User Story 2 — lease request (P1)
 
-**Independent Test**: `secret lease --for 1h A` с ответом «да» даёт аренду, с «нет» — ошибку без аренды.
+**Independent Test**: `secret lease --for 1h A` with the answer "yes" gives a lease, with "no" an error and no lease.
 
-<!-- утр-100: 4.2 — строки задач spec-kit: файл, действие и условия в одном пункте -->
-- [x] T008 [US2] `helper/store/main.swift`: запрос агента `lease` — всегда новый `confirmedContext` с текстом из контракта, чтение названных значений, добавление в таблицу (поздний конец для повторного имени). Команда `lease SECONDS NAME...`. Ошибки при блокировке экрана и `SECRET_NO_DIALOG` (contracts/cli.md)
-<!-- утр-100: 4.2 — строка задачи spec-kit: файл, действие и условия в одном пункте -->
-- [x] T009 [US2] `bin/secret`: `cmd_lease` по contracts/cli.md: `--for`, имена или `-e FILE`. Проверка имён до окна, ошибка для файлового keychain, журнал `lease`. Строки `help` и `usage`
-- [x] T010 [P] [US2] `hooks/claude-pretooluse.sh`: проверить, что хук пропускает `secret lease`, `secret lease status`, `secret lease --revoke`. Правку делать, только если хук их останавливает
+<!-- utr-100: 4.2 — spec-kit task line: file, action and conditions in one item -->
+- [x] T008 [US2] `helper/store/main.swift`: agent request `lease` — always a new `confirmedContext` with the text from the contract, a read of the named values, addition to the table (the later end for a repeated name). Command `lease SECONDS NAME...`. Errors on a screen lock and `SECRET_NO_DIALOG` (contracts/cli.md)
+<!-- utr-100: 4.2 — spec-kit task line: file, action and conditions in one item -->
+- [x] T009 [US2] `bin/secret`: `cmd_lease` per contracts/cli.md: `--for`, names or `-e FILE`. Check of the names before the window, error for the file keychain, log `lease`. Lines in `help` and `usage`
+- [x] T010 [P] [US2] `hooks/claude-pretooluse.sh`: check that the hook lets `secret lease`, `secret lease status`, `secret lease --revoke` through. Change it only if the hook stops them
 
-## Phase 5: User Story 3 — конец аренды (P1)
+## Phase 5: User Story 3 — end of the lease (P1)
 
-**Independent Test**: `SECRET_TEST_MAX_LEASE=2`, через 3 секунды `not leased`. `--revoke`, `lock` и `set` заканчивают аренду.
+**Independent Test**: `SECRET_TEST_MAX_LEASE=2`, after 3 seconds `not leased`. `--revoke`, `lock` and `set` end the lease.
 
-- [x] T011 [US3] `helper/store/main.swift`: запрос `revoke` и команда `lease-revoke`. `bin/secret lease --revoke`, журнал `lease-revoke`
-- [x] T012 [US3] `helper/store/main.swift`: имя выходит из аренды, если ссылка записи другая или записи нет (research R4). Проверка при чтении и в `lease-status`
+- [x] T011 [US3] `helper/store/main.swift`: request `revoke` and command `lease-revoke`. `bin/secret lease --revoke`, log `lease-revoke`
+- [x] T012 [US3] `helper/store/main.swift`: a name leaves the lease if the record reference is different or the record is gone (research R4). Check on read and in `lease-status`
 
-## Phase 6: User Story 4 — статус, журнал, SecretBar (P2)
+## Phase 6: User Story 4 — status, log, SecretBar (P2)
 
-<!-- утр-100: 8.1 — строки задач spec-kit: файл, действие и условия в одном пункте -->
-- [x] T013 [US4] `helper/store/main.swift`: запрос `lease-status`, команда `lease-status`; поле `lease=N:END` в строке `status` для SecretBar. `bin/secret lease status` по контракту
-- [x] T014 [US4] `app/SecretBar/`: строка активной аренды (число имён, конец) и кнопка «Revoke lease», вызов `bin/secret lease --revoke`. Перевод `ru` в `Localizable.xcstrings`
+<!-- utr-100: 8.1 — spec-kit task lines: file, action and conditions in one item -->
+- [x] T013 [US4] `helper/store/main.swift`: request `lease-status`, command `lease-status`; field `lease=N:END` in the `status` line for SecretBar. `bin/secret lease status` per the contract
+- [x] T014 [US4] `app/SecretBar/`: line of the active lease (number of names, end) and the button "Revoke lease", call of `bin/secret lease --revoke`. `ru` translation in `Localizable.xcstrings`
 
-## Phase 7: Тесты и документы
+## Phase 7: Tests and documents
 
-<!-- утр-100: 4.2 — строки задач spec-kit: файл, действие и условия в одном пункте -->
-- [x] T015 `tests/run.sh`: SC-001 (аренда после `test-lock`, `not leased` для другого имени меньше чем за 1 секунду, `test-sleep`), SC-002 (`SECRET_TEST_MAX_LEASE`), SC-003 (`--revoke`, `lock`, `set`, `rm`), SC-004 (`--for 25h`, отказ Touch ID, пустой `-e`), `lease status`, пометка `lease` в журнале, grace после `test-lock` заканчивается как раньше
-- [x] T016 [P] `docs/claude-md-secrets.md`: правило для агента (FR-012)
-- [x] T017 [P] `README.md`, `README.ru.md`, `site/`: команда `secret lease`
-- [ ] T018 Ручная проверка SC-005: аренда агентом, Touch ID, блокировка экрана 30 минут, секрет из аренды и ошибка для другого. Запишите дату
-- [ ] T019 Ручная проверка SC-006: аренда после сна Mac. Запишите дату
-- [ ] T020 Ручная проверка SecretBar: строка аренды и отзыв. Запишите дату
+<!-- utr-100: 4.2 — spec-kit task lines: file, action and conditions in one item -->
+- [x] T015 `tests/run.sh`: SC-001 (lease after `test-lock`, `not leased` for another name in less than 1 second, `test-sleep`), SC-002 (`SECRET_TEST_MAX_LEASE`), SC-003 (`--revoke`, `lock`, `set`, `rm`), SC-004 (`--for 25h`, Touch ID refusal, empty `-e`), `lease status`, mark `lease` in the log, grace after `test-lock` ends as before
+- [x] T016 [P] `docs/claude-md-secrets.md`: rule for the agent (FR-012)
+- [x] T017 [P] `README.md`, `README.ru.md`, `site/`: command `secret lease`
+- [ ] T018 Manual check SC-005: lease by the agent, Touch ID, screen lock for 30 minutes, the leased secret and an error for another. Record the date
+- [ ] T019 Manual check SC-006: lease after a Mac sleep. Record the date
+- [ ] T020 Manual check of SecretBar: lease line and revoke. Record the date
 
 ## Dependencies
 
-<!-- утр-100: 4.2 — цепочка зависимостей задач -->
+<!-- utr-100: 4.2 — task dependency chain -->
 T001 → T002 → T003 → T004 → (T005..T007) → (T008, T009) → (T011, T012) → T013 → T014 → T015.
-T010, T016, T017 — после T009, параллельно. T018..T020 — после T015 и пересборки helper и SecretBar.
+T010, T016, T017 — after T009, in parallel. T018..T020 — after T015 and a rebuild of the helper and SecretBar.
 
 ## Implementation Strategy
 
-MVP — фазы 1–5: аренда из CLI, работа при блокировке, конец аренды. SecretBar (T014) идёт
-следующим коммитом.
+MVP is phases 1–5: lease from the CLI, work during a lock, end of the lease. SecretBar (T014)
+comes in the next commit.

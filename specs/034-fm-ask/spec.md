@@ -1,4 +1,4 @@
-# Feature Specification: поиск секрета по смыслу моделью на устройстве
+# Feature Specification: search for a secret by meaning with the on-device model
 
 **Feature Branch**: `034-fm-ask`
 
@@ -6,69 +6,74 @@
 
 **Status**: Draft 2026-11-11
 
-**Input**: Владелец: «что-то специфичное под macOS 27, FM». В macOS 27 есть `/usr/bin/fm`: команда
-к модели Apple Foundation Model на устройстве.
+**Input**: Owner: "something specific to macOS 27, FM". macOS 27 has `/usr/bin/fm`: a command
+to the on-device Apple Foundation Model.
 
-## Цель
+## Goal
 
-Человек или агент ищет секрет словами: `secret ls --ask "пароль базы магазина"`. Команда печатает
-имена, которые подходят. Модель видит только имена и комментарии, значения она не видит.
+A person or an agent searches for a secret with words: `secret ls --ask "shop database
+password"`. The command prints the names that fit. The model sees only names and comments; it
+does not see the values.
 
-## Проба 2026-11-11
+## Probe of 2026-11-11
 
-5 секретов, `fm respond -m system -g --no-stream --schema`. Схема ограничивает ответ массивом имён
-из списка (`enum`):
+5 secrets, `fm respond -m system -g --no-stream --schema`. The schema limits the answer to an
+array of names from the list (`enum`):
 
-| Запрос | Ответ | Время |
+| Query | Answer | Time |
 |---|---|---|
-| database password of the shop | `SHOP_DB_PASSWORD` | 4,4 с (первый запуск) |
-| mail | `BILLING_SMTP_PASS` | 1,3 с |
-| токен гитхаба | `GITHUB_TOKEN` | 1,1 с |
-| kubernetes cert | пусто | 0,7 с |
+| database password of the shop | `SHOP_DB_PASSWORD` | 4.4 s (first run) |
+| mail | `BILLING_SMTP_PASS` | 1.3 s |
+| github token (in Russian) | `GITHUB_TOKEN` | 1.1 s |
+| kubernetes cert | empty | 0.7 s |
 
-Без `enum` модель выдумала имена (`Postgres`, `Stripe`). Поэтому `enum` обязателен.
+Without `enum`, the model made up names (`Postgres`, `Stripe`). So `enum` is required.
 
-Инструкция тоже важна. Проба 2026-11-11, те же 5 секретов, 7 запросов:
+The instruction is also important. Probe of 2026-11-11, the same 5 secrets, 7 queries:
 
-| Инструкция | Ошибки |
+| Instruction | Errors |
 |---|---|
-| «Pick the secrets whose name or comment fits the query. Return an empty list when nothing fits.» | `kubernetes` дал все 5 имён, `vpn` дал `SHOP_DB_PASSWORD` |
-| «Pick only the secrets that are clearly about the subject of the query. If no secret is about it, return an empty list. Do not guess.» | нет: 7 из 7 |
+| "Pick the secrets whose name or comment fits the query. Return an empty list when nothing fits." | `kubernetes` gave all 5 names, `vpn` gave `SHOP_DB_PASSWORD` |
+| "Pick only the secrets that are clearly about the subject of the query. If no secret is about it, return an empty list. Do not guess." | none: 7 of 7 |
 
-Команда использует вторую инструкцию.
+The command uses the second instruction.
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - поиск словами (Priority: P1)
+### User Story 1 - search with words (Priority: P1)
 
-1. **When** человек выполняет `secret ls --ask QUERY`, **Then** команда печатает подходящие имена,
-   по одному в строке, лучшее первым.
-2. С `-l` команда печатает имя, срок и комментарий, как `ls -l`.
-3. Если ничего не подходит, команда ничего не печатает и завершается с кодом 1.
-4. Запрос на любом языке, который понимает модель.
+1. **When** a person runs `secret ls --ask QUERY`, **Then** the command prints the names that
+   fit, one per line, the best first.
+2. With `-l`, the command prints the name, the expiry and the comment, as `ls -l`.
+3. If nothing fits, the command prints nothing and exits with code 1.
+4. The query can be in any language that the model understands.
 
-### User Story 2 - без модели (Priority: P1)
+### User Story 2 - without the model (Priority: P1)
 
-1. **When** `fm` нет, Apple Intelligence выключен или лицензия `fm` не принята, **Then** команда
-   печатает причину и совет `secret ls -l | grep -i WORD`. Код выхода 2.
+1. **When** `fm` is missing, Apple Intelligence is off or the `fm` license is not accepted,
+   **Then** the command prints the cause and the advice `secret ls -l | grep -i WORD`. Exit
+   code 2.
 
 ### Edge Cases
 
-- Много секретов: команда делит список на части по 40 строк и спрашивает модель для каждой части.
-- Модель вернула имя не из списка: команда его отбрасывает.
-- Только модель на устройстве (`-m system`). Private Cloud Compute и внешние провайдеры команда
-  не использует.
+- Many secrets: the command splits the list into parts of 40 lines and asks the model for each
+  part.
+- The model returned a name not from the list: the command drops it.
+- Only the on-device model (`-m system`). The command does not use Private Cloud Compute and
+  external providers.
 
 ## Requirements
 
-- **FR-001**: `secret ls --ask QUERY [-l]`. Новый флаг, старые формы `ls` не меняются.
-- **FR-002**: в `fm` идут только имена и комментарии. Список и запрос идут через stdin.
-- **FR-003**: схема ответа — объект с массивом `names`, элементы — `enum` из имён части.
-- **FR-004**: путь к `fm` — `SECRET_FM` в тестах (заглушка), иначе `/usr/bin/fm`.
-- **FR-005**: `ls --ask` не спрашивает Touch ID и не читает значения.
+- **FR-001**: `secret ls --ask QUERY [-l]`. A new flag; the old forms of `ls` do not change.
+- **FR-002**: only names and comments go to `fm`. The list and the query go through stdin.
+- **FR-003**: the answer schema is an object with the array `names`; the items are an `enum` of
+  the names of the part.
+- **FR-004**: the path to `fm` is `SECRET_FM` in tests (a stub), otherwise `/usr/bin/fm`.
+- **FR-005**: `ls --ask` does not ask for Touch ID and does not read values.
 
 ## Success Criteria
 
-- **SC-001**: тесты с заглушкой `fm`: имена печатаются; имя не из списка отброшено; пустой ответ
-  даёт код 1; нет `fm` — код 2 и совет; заглушка не видит значений; `-m system` в аргументах.
-- **SC-002**: ручная проверка на Mac владельца с настоящим `fm`. Дата — при выполнении.
+- **SC-001**: tests with a stub `fm`: the names are printed; a name not from the list is dropped;
+  an empty answer gives code 1; no `fm` gives code 2 and the advice; the stub does not see values;
+  `-m system` is in the arguments.
+- **SC-002**: manual check on the owner's Mac with the real `fm`. Date — when done.

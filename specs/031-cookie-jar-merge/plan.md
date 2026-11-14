@@ -1,44 +1,50 @@
-# Implementation Plan: cookie import сливает jar
+# Implementation Plan: cookie import merges the jar
 
 **Spec**: `specs/031-cookie-jar-merge/spec.md`
 
 ## Technical Context
 
-### `cmd_cookie import` в `bin/secret`
+### `cmd_cookie import` in `bin/secret`
 
-- Аргументы: `--as NAME` (есть), `--domain D` (есть), новый `--replace`.
-- Читает новый jar из stdin в память.
-- Если **нет** `--replace` и секрет есть (`has NAME`): читает значение секрета тем же путём, что и
-  `cmd_run`/`cmd_get` (чтение из хранилища → Touch ID), декодирует base64 в старый jar.
-- Мёрж по ключу: ключ — `domain|path|name`, где `domain` без префикса `#HttpOnly_`. Из старого jar
-  берутся cookie, ключа которых нет в новом. К ним добавляются все cookie нового jar. Шапка
-  `# Netscape HTTP Cookie File` — одна.
-- Пересчёт комментария и `-x` по итоговому набору: `N cookies`, список session-only (expiry 0),
-  `-x` — минимальный положительный expiry.
-- Кодирует итог в base64, пишет через путь `cmd_set` (значение пайпом, не argv).
-- `--replace`: старый секрет не читает, Touch ID не нужен, ведёт себя как сейчас.
+- Arguments: `--as NAME` (exists), `--domain D` (exists), new `--replace`.
+- It reads the new jar from stdin into memory.
+- If there is **no** `--replace` and the secret exists (`has NAME`): it reads the secret value by
+  the same path as `cmd_run`/`cmd_get` (read from the store → Touch ID) and decodes the base64
+  into the old jar.
+- Merge by key: the key is `domain|path|name`, where `domain` is without the prefix
+  `#HttpOnly_`. From the old jar, it takes the cookies whose key is not in the new one. It adds
+  all cookies of the new jar to them. The header `# Netscape HTTP Cookie File` is one.
+- Recompute the comment and `-x` from the final set: `N cookies`, the list of session-only
+  cookies (expiry 0), `-x` is the minimum positive expiry.
+- It encodes the result in base64 and writes it through the `cmd_set` path (value through a
+  pipe, not argv).
+- `--replace`: it does not read the old secret, Touch ID is not needed, it behaves as now.
 
-Мёрж идёт в awk/bash по строкам jar. Значения остаются в строках и попадают только в хранилище.
+The merge goes in awk/bash over the jar lines. The values stay in the lines and get only into the
+store.
 
-### Тесты (tests/run.sh)
+### Tests (tests/run.sh)
 
-- import jar домена A → import jar домена B в тот же NAME → `cookie ls --jar NAME` показывает cookie
-  обоих доменов.
-- повторный import домена A с новым значением → тот же ключ обновлён, дубликатов нет.
-- `--replace` → в секрете только последний jar.
-- значения не появляются в stdout `import`/`ls`.
+- import a jar of domain A → import a jar of domain B into the same NAME → `cookie ls --jar NAME`
+  shows the cookies of both domains.
+- a repeated import of domain A with a new value → the same key is updated, no duplicates.
+- `--replace` → only the last jar is in the secret.
+- the values do not appear in the stdout of `import`/`ls`.
 
 ## Constitution Check
 
-- **I**: мёрж в памяти команды, значения в stdout/argv/лог не идут. `ls --jar` — только метаданные.
-- **II**: мёрж читает секрет → Touch ID, как любое чтение. `--replace` пишет без чтения, без Touch ID.
-- **III**: только bash/awk, без новых зависимостей.
-- **IV**: `tests/run.sh` на тестовом хранилище проверяет мёрж, обновление ключа, `--replace`.
-- **V**: новый флаг `--replace`. Поведение `import` меняется (мёрж по умолчанию) — отступление ниже.
+- **I**: the merge is in the command memory; values do not go to stdout/argv/log. `ls --jar`
+  gives only metadata.
+- **II**: the merge reads the secret → Touch ID, as any read. `--replace` writes without a read,
+  without Touch ID.
+- **III**: only bash/awk, no new dependencies.
+- **IV**: `tests/run.sh` on the test store checks the merge, the key update, `--replace`.
+- **V**: new flag `--replace`. The behaviour of `import` changes (merge by default) — see the
+  deviation below.
 
 ## Complexity Tracking
 
-| Отступление | Причина |
+| Deviation | Reason |
 |---|---|
-| `import` по умолчанию сливает, а не перезаписывает | Один секрет собирает сессии нескольких сайтов. Прежнее поведение теряло cookie других доменов (просьба владельца). `--replace` возвращает перезапись. |
-| `import` теперь читает секрет (Touch ID) | Мёрж невозможен без старого jar. `--replace` чтение не делает. |
+| `import` merges by default instead of overwriting | One secret collects the sessions of several sites. The old behaviour lost the cookies of other domains (owner's request). `--replace` brings back the overwrite. |
+| `import` now reads the secret (Touch ID) | A merge is not possible without the old jar. `--replace` does not do the read. |

@@ -1,68 +1,68 @@
 # Feature Specification: SecretBar 2
 
-**Feature Branch**: `014-secretbar-v2`. Работа идёт в `main` локальной репы.
+**Feature Branch**: `014-secretbar-v2`. The work goes on in `main` of the local repository.
 
 **Created**: 2026-10-07
 
-**Status**: Done 2026-10-08; исправления после живой проверки — `specs/015-secretbar-live-fixes`
+**Status**: Done 2026-10-08; fixes after the live check — `specs/015-secretbar-live-fixes`
 
-**Input**: Владелец спросил, совершенно ли приложение, и попросил «ультра премиум экспириенс».
-Разбор нашёл слабые места первой версии (012):
+**Input**: The owner asked if the app is perfect, and asked for an "ultra premium experience".
+The review found weak points of the first version (012):
 
-- Окно строки меню закрывается, когда окно Touch ID или окно выбора файла забирает фокус.
-- Менеджеры буфера обмена сохраняют скопированное значение.
-- Опрос раз в 5 секунд запускает 3 процесса.
-- Нет уведомлений, иконки, горячей клавиши.
-- «Активность» не показывает окна Touch ID.
-- Вид приложения никто не проверял.
+- The menu bar window closes when the Touch ID window or the file selection window takes the focus.
+- Clipboard managers keep the copied value.
+- The poll every 5 seconds starts 3 processes.
+- No notifications, no icon, no hotkey.
+- "Activity" does not show the Touch ID windows.
+- Nobody checked the look of the app.
 
 ## User Scenarios & Testing *(mandatory)*
 
-<!-- утр-100: 8.2 — заголовки заданы шаблоном spec-kit -->
-### User Story 1 - Быстрая панель (Priority: P1)
+<!-- utr-100: 8.2 — the headings are set by the spec-kit template -->
+### User Story 1 - Quick panel (Priority: P1)
 
-1. **When** ⌥⌘S в любом приложении, **Then** по центру экрана открывается панель поиска.
-2. **When** владелец печатает, **Then** список сужается по имени и комментарию.
-3. **When** ↩, **Then** значение в буфере, панель закрыта, у строки меню плашка «Скопировано».
-4. **When** Esc или клик мимо, **Then** панель закрыта.
+1. **When** ⌥⌘S in any app, **Then** a search panel opens in the center of the screen.
+2. **When** the owner types, **Then** the list narrows by name and comment.
+3. **When** ↩, **Then** the value is in the clipboard, the panel is closed, the menu bar shows a "Copied" badge.
+4. **When** Esc or a click outside, **Then** the panel is closed.
 
-### User Story 2 - Главное окно (Priority: P1)
+### User Story 2 - Main window (Priority: P1)
 
-1. Слева проекты по комментарию, «Все», «Истекают». Посередине список. Справа карточка: имя,
-   комментарий, срок, ссылки `secret:NAME` в `.env` проектов, действия.
-2. Формы добавления, изменения, переименования, удаления и настройки работают в окне. Окно
-   Touch ID и окно выбора файла их не закрывают.
+1. On the left: projects by comment, "All", "Expiring". In the middle: the list. On the right: the card: name,
+   comment, expiry, references `secret:NAME` in project `.env` files, actions.
+2. The forms to add, change, rename, delete and the settings work in the window. The
+   Touch ID window and the file selection window do not close them.
 
-### User Story 3 - Скрытое копирование (Priority: P1)
+### User Story 3 - Concealed copy (Priority: P1)
 
-1. **When** копирование, **Then** в буфере значение с типом `org.nspasteboard.ConcealedType`.
-   Менеджеры буфера его не сохраняют. Очистка через 30 секунд, как раньше.
+1. **When** copy, **Then** the clipboard holds the value with the type `org.nspasteboard.ConcealedType`.
+   Clipboard managers do not keep it. Clearing after 30 seconds, as before.
 
-### User Story 4 - Уведомления и активность (Priority: P2)
+### User Story 4 - Notifications and activity (Priority: P2)
 
-1. Уведомление раз в день: секреты истекли или истекают за 7 дней.
-2. Уведомление: подписи helper осталось меньше 2 дней, или helper не запускается.
-3. «Активность» показывает обращения и окна Touch ID.
+1. A notification once a day: secrets expired or expire within 7 days.
+2. A notification: the helper signature has less than 2 days left, or the helper does not start.
+3. "Activity" shows the requests and the Touch ID windows.
 
 ### Edge Cases
 
-- Уведомления запрещены в системе: приложение работает без них.
-- Горячая клавиша занята другим приложением: приложение пишет это в настройках.
+- Notifications are not allowed in the system: the app works without them.
+- Another app uses the hotkey: the app writes this in the settings.
 
 ## Requirements *(mandatory)*
 
-<!-- утр-100: 1.9 — идентификаторы заданы шаблоном spec-kit -->
-- **FR-001**: helper `clip` читает значение из stdin и кладёт его в буфер со скрытым типом.
-  `secret copy` в режиме `dp` использует его.
-- **FR-002**: helper `status`: одна строка с запуском, grace и простоем.
-- **FR-003**: приложение по-прежнему не обращается к keychain и не читает значения в память.
-- **FR-004**: `--snapshot DIR`: каждый экран в PNG, светлая и тёмная тема, демо-данные.
-- **FR-005**: горячая клавиша через Carbon `RegisterEventHotKey`, без разрешения Accessibility.
+<!-- utr-100: 1.9 — the IDs are set by the spec-kit template -->
+- **FR-001**: helper `clip` reads the value from stdin and puts it into the clipboard with the concealed type.
+  `secret copy` in `dp` mode uses it.
+- **FR-002**: helper `status`: one line with launch, grace and idle time.
+- **FR-003**: the app still does not access the keychain and does not read values into memory.
+- **FR-004**: `--snapshot DIR`: each screen as PNG, light and dark theme, demo data.
+- **FR-005**: the hotkey through Carbon `RegisterEventHotKey`, without the Accessibility permission.
 
 ## Success Criteria *(mandatory)*
 
-<!-- утр-100: 1.9 — идентификаторы заданы шаблоном spec-kit -->
-- **SC-001**: Тесты: `clip` на отдельном буфере ставит скрытый тип; `status`; `--selftest`;
-  бинарник без вызовов keychain.
-- **SC-002**: Снимки `--snapshot` проверены глазами: вёрстка, обе темы.
-- **SC-003**: Ручная проверка владельцем.
+<!-- utr-100: 1.9 — the IDs are set by the spec-kit template -->
+- **SC-001**: Tests: `clip` on a separate clipboard sets the concealed type; `status`; `--selftest`;
+  the binary has no keychain calls.
+- **SC-002**: The `--snapshot` images are checked by eye: layout, both themes.
+- **SC-003**: Manual check by the owner.

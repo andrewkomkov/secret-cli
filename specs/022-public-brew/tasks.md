@@ -1,12 +1,12 @@
-# Tasks: открытая репа и установка через Homebrew
+# Tasks: public repository and install through Homebrew
 
 **Input**: `specs/022-public-brew/spec.md`
 
-- [x] T001 Конституция 2.2.0: remote на GitHub
-- [x] T002 [US2] SecretBar: `projectsDir`, демо-данные без проектов владельца
-- [x] T003 [US2] README, `docs/claude-md-secrets.md`, `tests/run.sh`, спека 013 без проектов владельца
-- [x] T004 [US1] `LICENSE`, README: установка через brew
-- [x] T005 [US2] 2026-10-22: поиск по файлам и метаданным иконок, слов из списка запретов нет. `tests/run.sh`: 324 из 324
-- [x] T006 [US2] 2026-10-22: старая история в `~/secret-cli-history.bundle`, новая `.git`, один коммит, `github.com/andrewkomkov/secret-cli` (public), тег `v1.0.0`
-- [x] T007 [US1] 2026-10-22: tap `github.com/andrewkomkov/homebrew-secret`. `brew install andrewkomkov/secret/secret` из GitHub, `brew test` и `brew audit --strict` проходят
-- [x] T008 2026-10-22, Mac владельца: прежнего каталога проектов нет. SecretBar и раньше искал в `~`, настройка не нужна
+- [x] T001 Constitution 2.2.0: remote on GitHub
+- [x] T002 [US2] SecretBar: `projectsDir`, demo data without the owner's projects
+- [x] T003 [US2] README, `docs/claude-md-secrets.md`, `tests/run.sh`, spec 013 without the owner's projects
+- [x] T004 [US1] `LICENSE`, README: install through brew
+- [x] T005 [US2] 2026-10-22: search of the files and the icon metadata, no words from the deny list. `tests/run.sh`: 324 of 324
+- [x] T006 [US2] 2026-10-22: old history in `~/secret-cli-history.bundle`, new `.git`, one commit, `github.com/andrewkomkov/secret-cli` (public), tag `v1.0.0`
+- [x] T007 [US1] 2026-10-22: tap `github.com/andrewkomkov/homebrew-secret`. `brew install andrewkomkov/secret/secret` from GitHub, `brew test` and `brew audit --strict` pass
+- [x] T008 2026-10-22, owner's Mac: the previous projects directory does not exist. SecretBar searched in `~` before too, no setting is necessary

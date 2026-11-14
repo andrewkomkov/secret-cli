@@ -1,24 +1,24 @@
-# Implementation Plan: SecretBar — «Новый секрет…» в меню и ссылка после создания
+# Implementation Plan: SecretBar — "New secret…" in the menu and a reference after create
 
 **Spec**: `specs/019-secretbar-new-secret-link/spec.md`
 
 ## Technical Context
 
-SwiftUI, `app/SecretBar`. Изменения только в приложении.
+SwiftUI, `app/SecretBar`. Changes only in the app.
 
-- `Navigation.newSecret()`: счётчик `addRequests` и `showMain()`. Главное окно следит за
-  счётчиком и ставит `sheet = .add`, если другой лист не открыт.
-- `Views.swift`: пункт «Новый секрет…» в меню «…».
-- `EditorSheet.save()`: после успешного `add` или `generate` вызывает
-  `Store.copyReference(name, saved: true)`. Тост объединяет «сохранён» и «ссылка в буфере».
+- `Navigation.newSecret()`: the counter `addRequests` and `showMain()`. The main window watches the
+  counter and sets `sheet = .add` if no other sheet is open.
+- `Views.swift`: the item "New secret…" in the "…" menu.
+- `EditorSheet.save()`: after a successful `add` or `generate`, it calls
+  `Store.copyReference(name, saved: true)`. The toast joins "saved" and "reference in the clipboard".
 
 ## Constitution Check
 
-- I: в буфер идёт имя, значение приложение не видит.
-- III: только системные фреймворки.
-- IV: окна и буфер проверяются руками, запись в `tasks.md` с датой; `tests/run.sh` проходит.
-- V: команды `secret` и формат ссылки не меняются.
+- I: the name goes into the clipboard, the app does not see the value.
+- III: only system frameworks.
+- IV: the windows and the clipboard are checked by hand, the record goes into `tasks.md` with a date; `tests/run.sh` passes.
+- V: the `secret` commands and the reference format do not change.
 
 ## Complexity Tracking
 
-Нет отступлений.
+No deviations.

@@ -1,41 +1,41 @@
-# Feature Specification: Перенос секретов из .env проектов
+# Feature Specification: Move secrets out of project .env files
 
-**Feature Branch**: `013-env-sweep`. Работа идёт в `main` локальной репы.
+**Feature Branch**: `013-env-sweep`. The work goes on in `main` of the local repository.
 
 **Created**: 2026-10-07
 
 **Status**: In progress
 
-**Input**: Владелец попросил найти на компьютере `.env` и похожие файлы и перенести секреты в
-хранилище, с комментариями, понятными агенту. В файлах значения заменить ссылками
-`secret:NAME`. Старую копию `.env.*.bak` одного проекта перенести и удалить.
+**Input**: The owner asked to find `.env` and similar files on the computer and move the secrets into
+the store, with comments that an agent can understand. In the files, replace the values with references
+`secret:NAME`. Move and delete the old copy `.env.*.bak` of one project.
 
 ## User Scenarios & Testing *(mandatory)*
 
-<!-- утр-100: 8.2 — заголовок задан шаблоном spec-kit -->
-### User Story 1 - Выборочный перенос (Priority: P1)
+<!-- utr-100: 8.2 — the heading is set by the spec-kit template -->
+### User Story 1 - Selective move (Priority: P1)
 
-1. **When** `secret import -p PREFIX --keys K1,K2 FILE`, **Then** команда переносит только эти
-   ключи. Остальные строки остаются как есть.
-2. **When** `--ref KEY=NAME`, **Then** строка KEY становится ссылкой на существующий секрет NAME.
-3. **Given** ключа из `--keys` или `--ref` нет в файле, **Then** ошибка, файл не меняется.
+1. **When** `secret import -p PREFIX --keys K1,K2 FILE`, **Then** the command moves only these
+   keys. The other lines stay as they are.
+2. **When** `--ref KEY=NAME`, **Then** the line KEY becomes a reference to the existing secret NAME.
+3. **Given** a key from `--keys` or `--ref` is not in the file, **Then** error, the file does not change.
 
-<!-- утр-100: 8.2 — заголовок задан шаблоном spec-kit -->
-### User Story 2 - Ошибки разбора без значений (Priority: P1)
+<!-- utr-100: 8.2 — the heading is set by the spec-kit template -->
+### User Story 2 - Parse errors without values (Priority: P1)
 
-1. **When** строка без `=` или с неверным именем, **Then** ошибка называет номер строки. Текст
-   строки в сообщение не попадает.
+1. **When** a line has no `=` or has an incorrect name, **Then** the error gives the line number. The text
+   of the line does not go into the message.
 
 ## Requirements *(mandatory)*
 
-<!-- утр-100: 1.9 — идентификаторы заданы шаблоном spec-kit -->
+<!-- utr-100: 1.9 — the IDs are set by the spec-kit template -->
 - **FR-001**: `import --keys`, `import --ref`.
-- **FR-002**: `parse_line` пишет номер строки вместо текста.
-- **FR-003**: `is_test_kc` сравнивает пути, если рабочего файла keychain нет.
-- **FR-004**: Перенос: дубли находит сравнение внутри `secret run`, без вывода значений.
+- **FR-002**: `parse_line` writes the line number instead of the text.
+- **FR-003**: `is_test_kc` compares paths if the working keychain file does not exist.
+- **FR-004**: Move: a comparison inside `secret run` finds duplicates, with no output of values.
 
 ## Success Criteria *(mandatory)*
 
-<!-- утр-100: 1.9 — идентификаторы заданы шаблоном spec-kit -->
-- **SC-001**: Тесты `013:` проходят.
-- **SC-002**: После переноса `secret check` по каждому файлу показывает только `ok` для секретов.
+<!-- utr-100: 1.9 — the IDs are set by the spec-kit template -->
+- **SC-001**: The tests `013:` pass.
+- **SC-002**: After the move, `secret check` on each file shows only `ok` for secrets.

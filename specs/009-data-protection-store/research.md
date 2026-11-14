@@ -1,51 +1,54 @@
-# Research: хранилище data protection keychain
+# Research: data protection keychain store
 
-<!-- утр-100: 8.7 — номера версий macOS и Xcode -->
-Пробы 2026-10-07 на macOS 27.0, Xcode 27.0. Проба — маленький `.app` (`spike/`), записи с service
-`secret-cli-dp-probe`. После каждой пробы мы удалили её записи.
+<!-- ste: E8.7 — macOS and Xcode version numbers -->
+Probes on 2026-10-07 on macOS 27.0, Xcode 27.0. A probe is a small `.app` (`spike/`), items with
+service `secret-cli-dp-probe`. After each probe we deleted its items.
 
-| # | Проверка | Результат |
+| # | Check | Result |
 |---|---|---|
-| R1 | `SecItemAdd` с `kSecUseDataProtectionKeychain`, бинарник с ad-hoc-подписью | `-34018` (`errSecMissingEntitlement`) |
-| R2 | То же, `.app` с подписью Apple Development бесплатной Personal Team и `keychain-access-groups` | `0`, чтение `0` |
-| R3 | Срок profile Personal Team для macOS | 7 дней (`CreationDate` 2026-10-07, `ExpirationDate` 2026-10-14) |
-| R4 | `keychain-access-groups` в profile | `TEAM.*`: любой бинарник команды получает любую группу команды. Подписать бинарник без вопросов может любой процесс пользователя (`xcodebuild` подписал пробу без окна) |
-| R5 | Запись с `SecAccessControl(.userPresence)`; чтение с `LAContext.interactionNotAllowed` | запись `0`; чтение без окна `-25308`, окна нет |
-| R6 | Атрибуты (`kSecReturnAttributes`) записи с `.userPresence` без контекста | в пробе прочитаны без окна. Неверно для рабочего хранилища: keychain спрашивает Touch ID (011 R12) |
-| R7 | `SecItemUpdate` атрибутов или значения без Touch ID | `-25308`: изменение требует Touch ID |
-| R8 | `SecItemDelete` без Touch ID | `0`: удаление без Touch ID |
-| R9 | `LAContext` после `evaluatePolicy`: чтения через 10 с, 120 с, 290 с, `interactionNotAllowed` после подтверждения | один вопрос Touch ID; чтения через 10 с, 120 с и 290 с — `0` |
-| R10 | Один `LAContext` на два чтения подряд | одно окно Touch ID |
+| R1 | `SecItemAdd` with `kSecUseDataProtectionKeychain`, a binary with an ad-hoc signature | `-34018` (`errSecMissingEntitlement`) |
+| R2 | The same, `.app` with an Apple Development signature of a free Personal Team and `keychain-access-groups` | `0`, read `0` |
+| R3 | Profile validity of a Personal Team for macOS | 7 days (`CreationDate` 2026-10-07, `ExpirationDate` 2026-10-14) |
+| R4 | `keychain-access-groups` in the profile | `TEAM.*`: any binary of the team gets any group of the team. Any process of the user can sign a binary without questions (`xcodebuild` signed the probe without a window) |
+| R5 | Item with `SecAccessControl(.userPresence)`; read with `LAContext.interactionNotAllowed` | write `0`; read without a window `-25308`, no window |
+| R6 | Attributes (`kSecReturnAttributes`) of an item with `.userPresence` without a context | in the probe, read without a window. Not true for the working store: the keychain asks for Touch ID (011 R12) |
+| R7 | `SecItemUpdate` of attributes or the value without Touch ID | `-25308`: a change requires Touch ID |
+| R8 | `SecItemDelete` without Touch ID | `0`: deletion without Touch ID |
+| R9 | `LAContext` after `evaluatePolicy`: reads after 10 s, 120 s, 290 s, `interactionNotAllowed` after the confirmation | one Touch ID question; reads after 10 s, 120 s and 290 s — `0` |
+| R10 | One `LAContext` for two reads in a row | one Touch ID window |
 
-## Решения
+## Decisions
 
-**Хранилище.** Data protection keychain, `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` и
-`.userPresence` на каждом значении. Rationale: R4 — подпись не отделяет наш helper от любого
-бинарника, который подпишет агент. Защиту даёт только проверка Touch ID в самой системе (R5).
+**Store.** Data protection keychain, `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` and
+`.userPresence` on each value. Rationale: R4 — the signature does not separate our helper from any
+binary that the agent signs. Only the Touch ID check in the system itself gives protection (R5).
 
-Alternatives: записи без `.userPresence` и Touch ID в helper, как в 007. Это решение отклонено.
-Причина: агент собирает свой бинарник с той же группой и читает значение. Touch ID ему не нужен.
+Alternatives: items without `.userPresence` and Touch ID in the helper, as in 007. This decision
+is rejected. Reason: the agent builds its own binary with the same group and reads the value. It
+does not need Touch ID.
 
-**Grace.** Процесс-агент helper держит подтверждённый `LAContext` (R9) и отвечает через
-unix-сокет `~/.local/state/secret/agent.sock` (каталог 0700). Контекст нельзя передать в другой
-процесс, поэтому первый Touch ID спрашивает сам агент. Alternatives:
+**Grace.** The agent process of the helper holds a confirmed `LAContext` (R9) and answers through
+the unix socket `~/.local/state/secret/agent.sock` (directory 0700). The context cannot be passed
+to another process, so the agent itself asks for the first Touch ID. Alternatives:
 
-- метка-файл с кодом аутентификации (HMAC) из 007 не работает. Значение требует Touch ID системы.
-  Метка его не заменяет.
-- без grace — вопрос на каждый `secret run`.
+- the mark file with an authentication code (HMAC) from 007 does not work. The value requires the
+  system Touch ID. The mark does not replace it.
+- no grace: a question on each `secret run`.
 
-**Запись.** Новое значение: удалить старую запись и добавить новую (R8, без Touch ID), как
-`security add-generic-password -U` раньше. Комментарий и срок: `SecItemUpdate` через агент с
-подтверждённым контекстом (R7).
+**Write.** New value: delete the old item and add a new one (R8, without Touch ID), as
+`security add-generic-password -U` did before. Comment and expiry date: `SecItemUpdate` through the
+agent with a confirmed context (R7).
 
-**Выбор хранилища.** Файл режима, а не запись в хранилище. Если profile истёк и helper не
-запускается, команда должна сообщить об ошибке. Тихий переход на файловый keychain запрещён.
+**Store selection.** A mode file, not an item in the store. If the profile has expired and the
+helper does not start, the command must report an error. A silent fallback to the file keychain is
+not allowed.
 
-**Сборка.** `xcodebuild -allowProvisioningUpdates` с `DEVELOPMENT_TEAM`. Team ID — поле `OU`
-сертификата `Apple Development` в login keychain. Bundle ID `secretcli.<team>.store`: он уникален
-у Apple без личного имени в репе. `CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO`: если нет
-`get-task-allow`, отладчик не может подключиться к helper. Hardened runtime включён.
+**Build.** `xcodebuild -allowProvisioningUpdates` with `DEVELOPMENT_TEAM`. The Team ID is the
+`OU` field of the `Apple Development` certificate in the login keychain. Bundle ID
+`secretcli.<team>.store`: it is unique at Apple without a personal name in the repo.
+`CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO`: without `get-task-allow`, a debugger cannot attach to the
+helper. Hardened runtime is on.
 
-**Продление.** `install.sh --renew` удаляет локальный profile этого bundle ID и пересобирает
-helper, когда до конца срока меньше 3 дней. LaunchAgent запускает это раз в день. Проверка, что
-новый profile получает новый срок, — ручная, 2026-10-11 или позже (T-задача в `tasks.md`).
+**Renewal.** `install.sh --renew` deletes the local profile of this bundle ID and rebuilds the
+helper when less than 3 days remain until expiry. A LaunchAgent runs this once a day. The check
+that a new profile gets a new expiry date is manual, on 2026-10-11 or later (a T task in `tasks.md`).

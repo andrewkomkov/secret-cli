@@ -1,4 +1,4 @@
-# Feature Specification: `touchid pq` проверяет значения до записи
+# Feature Specification: `touchid pq` checks the values before the write
 
 **Feature Branch**: `036-pq-verify`
 
@@ -6,26 +6,27 @@
 
 **Status**: Draft 2026-11-14
 
-**Input**: Владелец: «удостоверься про хранилище» перед переводом настоящего хранилища (033 T010).
+**Input**: Owner: "make sure about the store" before the migration of the real store (033 T010).
 
-## Цель
+## Goal
 
-Расшифровку настоящим ключом ML-KEM в Secure Enclave после Touch ID никто не проверял на железе.
-Проверка 2026-11-11 касалась только отказа без Touch ID. Если ключ закрывает, но не открывает,
-`touchid pq` оставит значения, которые никто не прочитает.
+Nobody checked on hardware the decryption with the real ML-KEM key in the Secure Enclave after
+Touch ID. The check of 2026-11-11 covered only the refusal without Touch ID. If the key seals but
+does not open, `touchid pq` leaves values that nobody can read.
 
-После фикса `touchid pq` открывает каждое новое значение тем же контекстом до записи файла. Если
-хоть одно значение не открылось или не совпало, команда завершается с ошибкой и файл не меняет.
+After the fix, `touchid pq` opens each new value with the same context before the file write. If
+at least one value did not open or did not match, the command fails with an error and does not
+change the file.
 
 ## Requirements
 
-- **FR-001**: в `upgradePQ` после `seal` — `unseal` каждого нового значения, `check` и `wm`.
-  Сравнение с исходным значением.
-- **FR-002**: при расхождении — ошибка `touchid pq: NAME does not open after sealing, nothing
-  changed`. Файл и запись keychain не меняются.
+- **FR-001**: in `upgradePQ` after `seal` — `unseal` of each new value, `check` and `wm`.
+  Comparison with the original value.
+- **FR-002**: on a mismatch — the error `touchid pq: NAME does not open after sealing, nothing
+  changed`. The file and the keychain item do not change.
 
 ## Success Criteria
 
-- **SC-001**: `tests/run.sh` проходит (тесты 033 идут через проверку).
-- **SC-002**: ручная на Mac владельца: `secret touchid pq` на настоящем хранилище, затем
-  `post-quantum: on` и `secret run` читает значение. Дата — при выполнении.
+- **SC-001**: `tests/run.sh` passes (the 033 tests go through the check).
+- **SC-002**: manual on the owner's Mac: `secret touchid pq` on the real store, then
+  `post-quantum: on` and `secret run` reads a value. Date — when done.

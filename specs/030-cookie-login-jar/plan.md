@@ -1,91 +1,97 @@
-# Implementation Plan: session-only cookie через расширение Safari и cookie-jar
+# Implementation Plan: session-only cookies through a Safari extension and a cookie jar
 
-**Spec**: `specs/030-cookie-login-jar/spec.md` (вариант B — расширение Safari)
+**Spec**: `specs/030-cookie-login-jar/spec.md` (option B — Safari extension)
 
-## Этапы
+## Stages
 
-- **Этап 1 — jar-инфраструктура (без расширения).** Общий плумбинг, который работает сам по себе и
-  тестируется без GUI. Это основа, на которую встаёт расширение.
-- **Этап 2 — расширение Safari + мост.** Захват live-сессии и доставка jar в хранилище.
+- **Stage 1 — jar infrastructure (without the extension).** Common plumbing that works by itself
+  and is tested without a GUI. This is the base that the extension stands on.
+- **Stage 2 — Safari extension + bridge.** Capture of the live session and delivery of the jar
+  into the store.
 
-Вариант A (окно WKWebView, `cookie login`, `helper/login`) отклонён и из дерева удаляется.
+Option A (a WKWebView window, `cookie login`, `helper/login`) is rejected and is removed from the
+tree.
 
-## Этап 1: jar-инфраструктура
+## Stage 1: jar infrastructure
 
-### Хранение и формат
-- Netscape cookie-jar (HttpOnly с префиксом `#HttpOnly_`). В секрете — base64 (значение
-  однострочное). Комментарий и `-x` считаются из jar (минимум expiry постоянных cookie; все
-  session-only → без `-x`, в комментарии `session`).
+### Storage and format
+- Netscape cookie jar (HttpOnly with the prefix `#HttpOnly_`). In the secret: base64 (the value
+  is one line). The comment and `-x` are computed from the jar (the minimum expiry of the
+  persistent cookies; all session-only → no `-x`, `session` in the comment).
 
 ### `bin/secret`
-- `secret cookie import --as NAME`: читает jar из stdin, кодирует base64, пишет через путь
-  `cmd_set` (значение пайпом, не argv), ставит `-x` и комментарий.
-- `secret run --cookie-jar NAME [--update]`: jar в `mktemp` 0600, путь в `$SECRET_COOKIE_JAR`,
-  `trap` на EXIT/HUP/INT/TERM удаляет файл; `--update` сохраняет изменённый jar. Маска — по каждому
-  cookie.
-- `secret cookie ls --jar NAME`: метаданные без значений.
-- `secret cookie pull DOMAIN --all --as NAME`: постоянные cookie домена из `secret-cookies jar
-  DOMAIN` (все профили, 029) в один jar.
-- Подсказка про расширение при типовых session-именах.
-- Фикс маски FR-012: пропуск значений короче 4 символов (или цифры ≤3), один warning в stderr.
+- `secret cookie import --as NAME`: reads the jar from stdin, encodes it in base64, writes it
+  through the `cmd_set` path (value through a pipe, not argv), sets `-x` and the comment.
+- `secret run --cookie-jar NAME [--update]`: the jar goes to a `mktemp` file 0600, the path to
+  `$SECRET_COOKIE_JAR`; a `trap` on EXIT/HUP/INT/TERM deletes the file; `--update` saves the
+  changed jar. The mask covers each cookie.
+- `secret cookie ls --jar NAME`: metadata without values.
+- `secret cookie pull DOMAIN --all --as NAME`: the persistent cookies of the domain from
+  `secret-cookies jar DOMAIN` (all profiles, 029) into one jar.
+- A hint about the extension for typical session names.
+- Mask fix FR-012: skip values shorter than 4 characters (or digits ≤3), one warning on stderr.
 
 ### Hook
-- `hooks/claude-pretooluse.sh` блокирует чтение `$SECRET_COOKIE_JAR` и путей jar-файлов.
+- `hooks/claude-pretooluse.sh` blocks reads of `$SECRET_COOKIE_JAR` and of jar file paths.
 
-### Что убрать из дерева (вариант A)
-- `helper/login/` (хелпер WKWebView), команда `cmd_cookie login`, её usage, её сборка в
-  `install.sh`, её тесты и упоминания в доках. Остальное из работы агента сохранить.
+### What to remove from the tree (option A)
+- `helper/login/` (the WKWebView helper), the command `cmd_cookie login`, its usage, its build in
+  `install.sh`, its tests and mentions in the docs. Keep the rest of the agent's work.
 
-## Этап 2: расширение Safari + loopback-демон
+## Stage 2: Safari extension + loopback daemon
 
-Уточнение против первого наброска: мост — отдельный swiftc-демон, а не сервер внутри SecretBar.
-Так ядро тестируется по HTTP без GUI, а рабочий Xcode-проект SecretBar не трогается.
+A change against the first draft: the bridge is a separate swiftc daemon, not a server inside
+SecretBar. So the core is tested over HTTP without a GUI, and the working Xcode project of
+SecretBar is not touched.
 
-### Loopback-демон (`helper/bridge/`, swiftc)
-- `secret-bridge`: слушает `127.0.0.1` на фиксированном порту, принимает только с loopback.
-- `POST /jar?as=NAME` с заголовком `X-Secret-Token`: при верном токене читает тело (Netscape jar) и
-  вызывает `secret cookie import --as NAME` через stdin. Иначе — 401/403, ничего не сохраняет.
-- Токен и порт лежат в `~/.local/state/secret/bridge.json` (0600). `secret cookie bridge token`
-  печатает токен для вставки в расширение; `secret cookie bridge start|stop` управляет демоном.
-- Тестируется в `tests/run.sh` обычным `curl` на loopback: верный токен сохраняет jar, неверный —
-  отказ, не-loopback — отказ.
+### Loopback daemon (`helper/bridge/`, swiftc)
+- `secret-bridge`: listens on `127.0.0.1` on a fixed port, accepts only from loopback.
+- `POST /jar?as=NAME` with the header `X-Secret-Token`: with a correct token, it reads the body
+  (Netscape jar) and calls `secret cookie import --as NAME` through stdin. Otherwise 401/403, it
+  saves nothing.
+- The token and the port are in `~/.local/state/secret/bridge.json` (0600). `secret cookie bridge
+  token` prints the token to paste into the extension; `secret cookie bridge start|stop` controls
+  the daemon.
+- Tested in `tests/run.sh` with plain `curl` on loopback: a correct token saves the jar, a wrong
+  one is refused, non-loopback is refused.
 
-### Расширение Safari (веб-часть + Xcode-обёртка)
-- `app/extension/`: manifest v3, право `cookies` и доступ к хостам, popup. Кнопка читает
-  `browser.cookies.getAll` активного домена (HttpOnly и session), собирает Netscape jar, шлёт
-  `POST http://127.0.0.1:PORT/jar?as=NAME` с токеном из настроек расширения.
-- Xcode-обёртка приложения — через `xcrun safari-web-extension-converter app/extension` (отдельный
-  шаг со сборкой). Подпись Apple Development или ad-hoc; без неё — «Allow Unsigned Extensions» в
-  меню Develop Safari.
+### Safari extension (web part + Xcode wrapper)
+- `app/extension/`: manifest v3, the permission `cookies` and host access, popup. The button
+  reads `browser.cookies.getAll` of the active domain (HttpOnly and session), builds a Netscape
+  jar, sends `POST http://127.0.0.1:PORT/jar?as=NAME` with the token from the extension settings.
+- The Xcode app wrapper is made with `xcrun safari-web-extension-converter app/extension` (a
+  separate step with a build). Apple Development or ad-hoc signature; without it, "Allow Unsigned
+  Extensions" in the Safari Develop menu.
 
-### Ручные шаги (человек)
-- Включить расширение в Safari, дать доступ к cookie по сайтам, один раз вставить токен из `secret
-  cookie bridge token` в настройки расширения.
+### Manual steps (person)
+- Turn on the extension in Safari, give cookie access per site, paste the token from `secret
+  cookie bridge token` into the extension settings once.
 
-### Ручные шаги (человек)
-- Включить расширение в Safari, дать доступ к cookie по сайтам, один раз вставить токен из SecretBar
-  в настройки расширения.
+### Manual steps (person)
+- Turn on the extension in Safari, give cookie access per site, paste the token from SecretBar
+  into the extension settings once.
 
 ## Constitution Check
 
-- **I**: значения cookie не идут в stdout обычных команд, в argv и логи. jar из расширения — по
-  loopback в SecretBar, затем в `import` через stdin. `ls --jar` печатает только метаданные.
-  Временный jar-файл — 0600, удаляется, hook закрывает чтение.
-- **II**: `import` пишет секрет — подтверждение как у `set`. `run --cookie-jar` читает секрет —
-  Touch ID одним запросом. Вход в сайт раньше сделал человек в своей Safari.
-- **III**: расширение и сервер — часть SecretBar (Xcode, подпись Apple Development или ad-hoc, без
-  profile и entitlements). `secret` и хелперы — как раньше. Без SecretBar/расширения доставка не
-  работает, прочие команды работают.
-- **IV**: `tests/run.sh` проверяет этап 1 без GUI: формат jar, round-trip `--update`, маска,
-  короткие значения, hook, протокол `import`. Живое расширение и loopback — ручная проверка с датой.
-- **V**: новые команды `cookie import`, `cookie ls --jar`, `cookie pull --all`, флаги `run
-  --cookie-jar`/`--update`. Существующие команды и формат `secret:NAME` не меняются.
+- **I**: cookie values do not go to the stdout of normal commands, to argv or to logs. The jar
+  from the extension goes over loopback to SecretBar, then to `import` through stdin. `ls --jar`
+  prints only metadata. The temporary jar file is 0600, it is deleted, and the hook blocks reads.
+- **II**: `import` writes a secret — confirmation as with `set`. `run --cookie-jar` reads a
+  secret — Touch ID in one request. The person logged in to the site earlier in their own Safari.
+- **III**: the extension and the server are part of SecretBar (Xcode, Apple Development or ad-hoc
+  signature, without a profile and entitlements). `secret` and the helpers are as before. Without
+  SecretBar/the extension the delivery does not work; the other commands work.
+- **IV**: `tests/run.sh` checks stage 1 without a GUI: jar format, `--update` round trip, mask,
+  short values, hook, `import` protocol. The live extension and loopback are a manual check with a
+  date.
+- **V**: new commands `cookie import`, `cookie ls --jar`, `cookie pull --all`, flags `run
+  --cookie-jar`/`--update`. The existing commands and the `secret:NAME` format do not change.
 
 ## Complexity Tracking
 
-| Отступление | Причина |
+| Deviation | Reason |
 |---|---|
-| Расширение Safari + loopback-мост в SecretBar | Session/HttpOnly cookie читает только код внутри Safari. app groups закрыты правилом «без entitlements», поэтому мост идёт через loopback, а не через песочницу хелпера. |
-| jar как один секрет в base64 | Хранилище держит однострочные значения, jar многострочный. |
-| `run --update` пишет секрет после `cmd` | ASP.NET крутит сессию. Без сохранения она умирает за ~20 минут. |
-| Маска пропускает короткие значения | `isEmp=0` рвал `302` в `3***2`. |
+| Safari extension + loopback bridge in SecretBar | Only code inside Safari reads session/HttpOnly cookies. App groups are closed by the rule "no entitlements", so the bridge goes over loopback, not through the helper sandbox. |
+| The jar as one secret in base64 | The store keeps one-line values, and a jar has many lines. |
+| `run --update` writes the secret after `cmd` | ASP.NET rotates the session. Without a save, it dies in ~20 minutes. |
+| The mask skips short values | `isEmp=0` broke `302` into `3***2`. |

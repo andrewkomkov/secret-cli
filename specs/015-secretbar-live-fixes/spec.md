@@ -1,63 +1,63 @@
-# Feature Specification: SecretBar — исправления после живой проверки
+# Feature Specification: SecretBar — fixes after the live check
 
-**Feature Branch**: `015-secretbar-live-fixes`. Работа идёт в `main` локальной репы.
+**Feature Branch**: `015-secretbar-live-fixes`. The work goes on in `main` of the local repository.
 
 **Created**: 2026-10-08
 
 **Status**: Done 2026-10-08
 
-**Input**: Владелец не будет проверять приложение руками и попросил всё сделать без него.
-2026-10-08 агент прошёл установленный SecretBar на реальных данных: горячая клавиша, главное
-окно, карточка, «Активность», «Настройки», дерево доступности (VoiceOver). Значения не
-копировались: копирование агенту запрещено. Найдено:
+**Input**: The owner will not check the app by hand and asked to do everything without him.
+On 2026-10-08 the agent went through the installed SecretBar on real data: hotkey, main
+window, card, "Activity", "Settings", the accessibility tree (VoiceOver). Values were not
+copied: copy is forbidden for the agent. Found:
 
-1. Поиск не находит секрет, если строка набрана в русской раскладке (`пшерги` вместо `github`).
-2. Раздел без секретов («Истекают»): поле поиска уезжает в середину окна.
-3. Справа остаётся карточка секрета, которого нет в текущем списке.
-4. «Как использовать» предлагает ключ `.env` без префикса проекта, а в файле ключ другой
-   (`ADMIN_PASSWORD` вместо `JENKINS_ADMIN_PASSWORD`).
-5. VoiceOver: значок grace читается «Разблокировать», кнопки копирования команд — «Копия»,
-   у поля поиска нет подписи, у кнопки действий — «Еще».
-6. Индекс Spotlight нельзя проверить без человека: `mdfind` не видит записи приложения.
-7. Поведение на большом списке (сотни секретов) не проверено.
+1. Search does not find a secret if the string is typed in the Russian layout (`github` typed on Russian keys instead of `github`).
+2. A section without secrets ("Expiring"): the search field moves to the middle of the window.
+3. The card of a secret that is not in the current list stays on the right.
+4. "How to use" suggests a `.env` key without the project prefix, but the key in the file is different
+   (`ADMIN_PASSWORD` instead of `JENKINS_ADMIN_PASSWORD`).
+5. VoiceOver: the grace icon reads as "Unlock", the buttons that copy commands as "Copy",
+   the search field has no label, the actions button reads as "More".
+6. Nobody can check the Spotlight index without a human: `mdfind` does not see the entries of the app.
+7. The behavior on a large list (hundreds of secrets) is not checked.
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Поиск в любой раскладке (Priority: P1)
+### User Story 1 - Search in any layout (Priority: P1)
 
-1. **When** владелец набирает `пшерги`, **Then** панель, главное окно и Spotlight находят
-   `GITHUB_TOKEN`, как по `github`. Верно и обратное: `ыуськуе` найдёт `секрет`.
-2. Совпадения по исходной строке идут первыми.
+1. **When** the owner types `github` on Russian keys, **Then** the panel, the main window and Spotlight find
+   `GITHUB_TOKEN`, as for `github`. The reverse is also true: the Russian word for "secret" typed on English keys finds that Russian word.
+2. Matches on the source string come first.
 
-### User Story 2 - Список и карточка согласованы (Priority: P1)
+### User Story 2 - List and card agree (Priority: P1)
 
-1. Пустой раздел: поле поиска наверху, под ним пояснение, почему пусто.
-2. Карточка справа только для секрета из текущего списка.
-3. «Как использовать» показывает ключ, под которым секрет записан в `.env`, если ссылка есть.
+1. Empty section: the search field at the top, below it a note why the section is empty.
+2. The card on the right is only for a secret from the current list.
+3. "How to use" shows the key under which the secret is written in `.env`, if a reference exists.
 
 ### User Story 3 - VoiceOver (Priority: P2)
 
-1. Каждая кнопка и значок со смыслом имеет русскую подпись: состояние grace, копирование
-   команды, поиск, действия.
+1. Each button and each meaningful icon has a Russian label: grace state, command
+   copy, search, actions.
 
-### User Story 4 - Проверки без человека (Priority: P2)
+### User Story 4 - Checks without a human (Priority: P2)
 
-1. `SecretBar --spotlight-check` печатает число записей приложения в индексе Spotlight.
-2. `--selftest` проверяет поиск в другой раскладке и время поиска по 2000 секретам.
-3. `--snapshot` снимает пустой раздел и список на 300 секретов.
+1. `SecretBar --spotlight-check` prints the number of entries of the app in the Spotlight index.
+2. `--selftest` checks search in the other layout and the search time on 2000 secrets.
+3. `--snapshot` captures an empty section and a list of 300 secrets.
 
 ## Requirements *(mandatory)*
 
-- **FR-001**: поиск дополняет результат строкой, переведённой в другую раскладку (ЙЦУКЕН ↔
-  QWERTY), если в запросе только буквы одной раскладки.
-- **FR-002**: приложение по-прежнему не обращается к keychain и не читает значения.
-- **FR-003**: индекс ссылок хранит ключ `.env` для каждой ссылки `secret:NAME`. Ключ —
-  только имя переменной (`^[A-Za-z_][A-Za-z0-9_]*$`, до 64 знаков): `.env` чужой репы может
-  держать перед `=secret:` любой текст, а строка с ключом копируется в буфер.
-- **FR-004**: `--spotlight-check` только читает индекс приложения через `CSSearchQuery`.
+- **FR-001**: search adds to the result the string converted to the other layout (JCUKEN ↔
+  QWERTY), if the query has only letters of one layout.
+- **FR-002**: the app still does not access the keychain and does not read values.
+- **FR-003**: the reference index keeps the `.env` key for each reference `secret:NAME`. The key is
+  only a variable name (`^[A-Za-z_][A-Za-z0-9_]*$`, up to 64 characters): a `.env` of another repository can
+  hold any text before `=secret:`, and the line with the key is copied to the clipboard.
+- **FR-004**: `--spotlight-check` only reads the index of the app through `CSSearchQuery`.
 
 ## Success Criteria *(mandatory)*
 
-- **SC-001**: все 7 находок закрыты; снимки и `--selftest` это показывают.
-- **SC-002**: поиск по 2000 секретам быстрее 50 мс.
-- **SC-003**: `tests/run.sh` проходит.
+- **SC-001**: all 7 findings are closed; the snapshots and `--selftest` show this.
+- **SC-002**: search on 2000 secrets is faster than 50 ms.
+- **SC-003**: `tests/run.sh` passes.

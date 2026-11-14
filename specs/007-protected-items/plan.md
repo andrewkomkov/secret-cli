@@ -1,24 +1,24 @@
-# Implementation Plan: Записи, которые читает только helper
+# Implementation Plan: Items that only the helper reads
 
 **Branch**: `007-protected-items` | **Date**: 2026-10-02 | **Spec**: [spec.md](spec.md) | **Research**: [research.md](research.md)
 
-## Summary <!-- slop: заголовок задан шаблоном spec-kit -->
+## Summary <!-- slop: the heading comes from the spec-kit template -->
 
-В защищённом режиме helper — единственный читатель значений. Режим определяет наличие записи
-`__secret-cli.policy`. В защищённом режиме `bin/secret` вызывает `secret-auth read/write/delete`,
-в обычном — `security`, как сейчас.
+In protected mode, the helper is the only reader of values. The mode is set by the existence of the item
+`__secret-cli.policy`. In protected mode, `bin/secret` calls `secret-auth read/write/delete`,
+in normal mode it calls `security`, as now.
 
-Helper (Swift, legacy Keychain API): поиск `SecKeychainFindGenericPassword`, создание
-`SecKeychainAddGenericPassword`, атрибуты `SecKeychainItemModifyAttributesAndData`, удаление
-`SecKeychainItemDelete`. Проверка «запись моя»: чтение данных с выключенным UI удаётся только
-создателю.
+Helper (Swift, legacy Keychain API): search with `SecKeychainFindGenericPassword`, creation with
+`SecKeychainAddGenericPassword`, attributes with `SecKeychainItemModifyAttributesAndData`, deletion with
+`SecKeychainItemDelete`. The check "the item is mine": a read of the data with the UI off succeeds only for
+the creator.
 
-Touch ID: `LAContext.evaluatePolicy(.deviceOwnerAuthentication)`. Grace: файл с временем и
-HMAC-SHA256 (`CryptoKit`) ключом из политики. Если политики нет или её нельзя прочитать, grace 0.
+Touch ID: `LAContext.evaluatePolicy(.deviceOwnerAuthentication)`. Grace: a file with the time and
+HMAC-SHA256 (`CryptoKit`) with the key from the policy. If there is no policy or it cannot be read, grace is 0.
 
-Перенос (`touchid on`, обновление helper): значения идут через pipe между процессами, на диск
-не пишутся. Порядок для каждой записи: создать `NAME#new` → проверить чтение → удалить старую →
-переименовать `NAME#new` в `NAME` (атрибут `svce`).
+Migration (`touchid on`, helper update): the values go through a pipe between processes and are not written
+to disk. The order for each item: create `NAME#new` → check the read → delete the old one →
+rename `NAME#new` to `NAME` (the `svce` attribute).
 
 ## Technical Context
 
@@ -26,22 +26,22 @@ HMAC-SHA256 (`CryptoKit`) ключом из политики. Если поли�
 
 **Primary Dependencies**: Security (legacy API, deprecated), LocalAuthentication, CryptoKit
 
-**Testing**: тестовая сборка helper `-D SECRET_TEST` во временном каталоге; вторая тестовая
-сборка с другим кодом — для переноса и для отказа чужому бинарнику
+**Testing**: a test build of the helper `-D SECRET_TEST` in a temporary directory; a second test
+build with other code — for the migration and for the refusal to a foreign binary
 
 ## Constitution Check
 
-| Принцип | Как соблюдается |
+| Principle | How it is met |
 |---|---|
-| I | значения между helper и bash идут через pipe; при переносе на диск не пишутся |
-| II | Touch ID внутри helper; выключение — с Touch ID |
-| III | helper из исходника в репе, `swiftc` и `codesign` из Command Line Tools |
-| IV | тестовая сборка helper на временном keychain; настоящий Touch ID и окно `security` — ручная проверка |
-| V | `touchid off` и режим без helper работают как раньше |
+| I | values between the helper and bash go through a pipe; during migration they are not written to disk |
+| II | Touch ID is inside the helper; turning off needs Touch ID |
+| III | the helper is built from source in the repo, `swiftc` and `codesign` from Command Line Tools |
+| IV | a test build of the helper on a temporary keychain; real Touch ID and the `security` dialog are a manual check |
+| V | `touchid off` and the mode without the helper work as before |
 
 ## Complexity Tracking
 
-| Отступление | Причина |
+| Deviation | Reason |
 |---|---|
-| `touchid on` меняет способ хранения всех записей (принцип V) | иначе Touch ID обходится вызовом `security` |
-| Тестовый helper отличается от рабочего (`-D SECRET_TEST`) | Touch ID нельзя нажать в тесте, а обход Touch ID не должен попасть в рабочий бинарник |
+| `touchid on` changes how all items are stored (principle V) | otherwise a call to `security` goes around Touch ID |
+| The test helper differs from the production one (`-D SECRET_TEST`) | Touch ID cannot be pressed in a test, and a Touch ID bypass must not get into the production binary |

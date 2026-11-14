@@ -1,70 +1,78 @@
-# Feature Specification: импорт cookie из Safari в хранилище
+# Feature Specification: import of cookies from Safari into the store
 
-**Feature Branch**: `027-safari-cookie-import`. Работа идёт в `main`.
+**Feature Branch**: `027-safari-cookie-import`. The work goes on in `main`.
 
 **Created**: 2026-11-03
 
 **Status**: Draft 2026-11-03
 
-**Input**: Владелец: «чтоб аппка могла смотреть в cookies Safari». Надоело вручную открывать режим
-отладки и копировать cookie из Storage. Агент под именем владельца должен совершать действия на
-сайтах без API и токена. Пример — SSO-прокси перед Grafana. Для этого фича разово переносит cookie
-сессии из Safari в хранилище.
+**Input**: Owner: "so that the app can look into Safari cookies". The owner is tired of opening
+the debug mode by hand and copying cookies from Storage. An agent acting as the owner must do
+actions on sites without an API and a token. An example is an SSO proxy in front of Grafana. For
+this, the feature moves a session cookie from Safari into the store once.
 
-## Контекст и границы
+## Context and scope
 
-- Фича читает **persistent cookie** из файла Safari
+- The feature reads **persistent cookies** from the Safari file
   `~/Library/Containers/com.apple.Safari/Data/Library/Cookies/Cookies.binarycookies`.
-- Чисто in-memory cookie (без даты, «до закрытия вкладки») Safari в файл не пишет. Такую cookie
-  фича пропускает. Это известный предел формата.
-- `sessionStorage` и `localStorage` — это не cookie. В этом файле их нет. Они вне объёма фичи.
-- Фича работает только с Safari. Chrome и Firefox — на будущее. У Chrome значения зашифрованы
-  ключом из keychain, это отдельная работа.
-- Файл закрывает TCC. Читателю файла (Terminal для CLI, позже SecretBar.app) нужен **Full Disk
-  Access**. Без доступа команда завершается с понятной ошибкой.
+- Safari does not write pure in-memory cookies (no date, "until the tab is closed") to the
+  file. The feature skips such a cookie. This is a known limit of the format.
+- `sessionStorage` and `localStorage` are not cookies. They are not in this file. They are out
+  of the scope of the feature.
+- The feature works only with Safari. Chrome and Firefox are for the future. Chrome encrypts the
+  values with a key from the keychain; that is separate work.
+- TCC protects the file. The reader of the file (Terminal for the CLI, later SecretBar.app)
+  needs **Full Disk Access**. Without access, the command fails with a clear error.
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - список cookie по домену (Priority: P1)
+### User Story 1 - list of cookies by domain (Priority: P1)
 
-1. **When** человек выполняет `secret cookie ls <domain>`, **Then** команда печатает имена cookie
-   этого домена. Рядом — флаги `Secure` и `HTTPOnly`, путь и дата протухания. Значения команда
-   держит в тайне.
-2. **When** домен пуст, **Then** команда печатает пустой список и выходит с кодом 0.
-3. **When** Full Disk Access отсутствует, **Then** команда называет причину и путь файла, объясняет,
-   как выдать доступ, и открывает нужную панель Настроек.
+1. **When** a person runs `secret cookie ls <domain>`, **Then** the command prints the cookie
+   names of this domain. Next to them: the flags `Secure` and `HTTPOnly`, the path and the expiry
+   date. The command keeps the values secret.
+2. **When** the domain is empty, **Then** the command prints an empty list and exits with code 0.
+3. **When** Full Disk Access is missing, **Then** the command names the cause and the file path,
+   explains how to give access and opens the needed Settings pane.
 
-### User Story 2 - импорт cookie в хранилище (Priority: P1)
+### User Story 2 - import of a cookie into the store (Priority: P1)
 
-1. **When** человек выполняет `secret cookie pull <domain> <name> --as NAME`, **Then** хелпер
-   передаёт значение cookie в запись хранилища под именем `NAME`. В argv и логах значение
-   отсутствует.
-2. **When** у cookie есть дата протухания, **Then** команда ставит секрету `-x` этой датой. Дальше
-   `secret ls --expiring` заранее предупреждает о протухании.
-3. **When** домену подходит несколько cookie с одним именем и разным путём, **Then** команда просит
-   флаг `--path` и печатает список путей. Значения команда держит в тайне.
-4. **When** cookie отсутствует, **Then** команда выдаёт ошибку и код 1. Хранилище остаётся прежним.
-5. Комментарий секрета хранит домен и имя cookie. Значение в комментарий не идёт.
+1. **When** a person runs `secret cookie pull <domain> <name> --as NAME`, **Then** the helper
+   passes the cookie value into the store record named `NAME`. The value is not in argv or
+   logs.
+2. **When** the cookie has an expiry date, **Then** the command sets `-x` with this date on the
+   secret. Then `secret ls --expiring` warns about the expiry in advance.
+3. **When** several cookies with one name and different paths match the domain, **Then** the
+   command asks for the flag `--path` and prints the list of paths. The command keeps the values
+   secret.
+4. **When** the cookie is missing, **Then** the command gives an error and code 1. The store
+   stays unchanged.
+5. The secret comment keeps the domain and the cookie name. The value does not go into the
+   comment.
 
 ## Requirements *(mandatory)*
 
-- **FR-001**: новая команда `secret cookie` с подкомандами `ls` и `pull`. Прежние команды и флаги
-  остаются как есть.
-- **FR-002**: ридер `.binarycookies` — Swift-хелпер `helper/cookies/`. Исходник лежит в репе.
-  Сборка идёт через `swiftc` из Command Line Tools. Подпись — как у store-хелпера. Без собранного
-  хелпера `secret cookie` сообщает, что возможность недоступна.
-- **FR-003**: хелпер отдаёт значение выбранной cookie в stdout. `bin/secret` передаёт его пайпом в
-  запись хранилища. Режим `ls` печатает только имена и метаданные.
-- **FR-004**: гейт Full Disk Access. На `EPERM` и `EACCES` команда печатает путь и подсказку, затем
-  открывает панель `Privacy_AllFiles`.
-- **FR-005**: команда ставит `-x` из даты протухания cookie. Комментарий хранит домен и имя cookie.
-- **FR-006**: флаг `--as NAME` у `pull` обязателен. Имя проходит ту же проверку, что и у `set`.
+- **FR-001**: new command `secret cookie` with the subcommands `ls` and `pull`. The old commands
+  and flags stay as they are.
+- **FR-002**: the `.binarycookies` reader is the Swift helper `helper/cookies/`. The source is in
+  the repo. The build uses `swiftc` from the Command Line Tools. The signature is the same as for
+  the store helper. Without a built helper, `secret cookie` reports that the feature is not
+  available.
+- **FR-003**: the helper gives the value of the chosen cookie to stdout. `bin/secret` pipes it
+  into the store record. The `ls` mode prints only names and metadata.
+- **FR-004**: Full Disk Access gate. On `EPERM` and `EACCES`, the command prints the path and a
+  hint, then opens the `Privacy_AllFiles` pane.
+- **FR-005**: the command sets `-x` from the cookie expiry date. The comment keeps the domain and
+  the cookie name.
+- **FR-006**: the flag `--as NAME` of `pull` is required. The name goes through the same check as
+  in `set`.
 
 ## Success Criteria *(mandatory)*
 
-- **SC-001**: одна команда кладёт session-cookie (тип Grafana или SSO-прокси) в хранилище. Web
-  Inspector открывать не нужно.
-- **SC-002**: значение cookie остаётся вне stdout `ls`, вне argv процесса и вне логов.
-- **SC-003**: для импортированной cookie с датой протухания `secret ls --expiring` показывает её
-  заранее.
-- **SC-004**: без Full Disk Access команда даёт понятную инструкцию.
+- **SC-001**: one command puts a session cookie (of the Grafana or SSO proxy type) into the
+  store. There is no need to open the Web Inspector.
+- **SC-002**: the cookie value stays out of the `ls` stdout, out of the process argv and out of
+  the logs.
+- **SC-003**: for an imported cookie with an expiry date, `secret ls --expiring` shows it in
+  advance.
+- **SC-004**: without Full Disk Access, the command gives a clear instruction.

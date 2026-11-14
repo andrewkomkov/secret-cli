@@ -1,73 +1,73 @@
-# Feature Specification: Записи, которые читает только helper
+# Feature Specification: Items that only the helper reads
 
-**Feature Branch**: `007-protected-items` (работа идёт в `main` локальной репы)
+**Feature Branch**: `007-protected-items` (the work is done in `main` of the local repo)
 
 **Created**: 2026-10-02
 
-**Status**: In progress — всё, кроме ручной проверки на keychain владельца (T014), сделано 2026-10-02
+**Status**: In progress — everything except the manual check on the owner's keychain (T014) was done on 2026-10-02
 
-**Input**: Сейчас Touch ID защищает только команду `secret`: пока keychain разблокирован,
-`/usr/bin/security` читает записи без вопросов. Владелец хочет, чтобы значение без Touch ID не
-мог прочитать никто.
+**Input**: Now Touch ID protects only the `secret` command: while the keychain is unlocked,
+`/usr/bin/security` reads the items without questions. The owner wants that nobody can read a
+value without Touch ID.
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Значение читается только после Touch ID (Priority: P1)
+### User Story 1 - A value is read only after Touch ID (Priority: P1)
 
 **Acceptance Scenarios**:
 
-1. **Given** `secret touchid on`, **Then** все записи переходят в защищённый режим: их создатель
-   и единственный доверенный читатель — helper.
-2. **When** любой процесс вызывает `security find-generic-password -w` для такой записи,
-   **Then** macOS показывает окно с запросом. Без человека значение не читается.
-3. **When** `get`, `copy`, `run`, `export`, **Then** helper спрашивает Touch ID (или берёт
-   подтверждение из окна grace) и только потом читает значения.
-4. **When** бинарник с другой подписью (пересобранный, изменённый, чужой) читает запись, **Then** отказ.
-5. **Given** запись подменили (удалили и создали заново другим процессом), **Then** чтение
-   завершается ошибкой `not protected` и подменённое значение не отдаёт.
+1. **Given** `secret touchid on`, **Then** all items go into protected mode: their creator
+   and the only trusted reader is the helper.
+2. **When** any process calls `security find-generic-password -w` for such an item,
+   **Then** macOS shows a dialog with a request. Without a human, the value is not read.
+3. **When** `get`, `copy`, `run`, `export`, **Then** the helper asks for Touch ID (or takes
+   the confirmation from the grace window) and only then reads the values.
+4. **When** a binary with another signature (rebuilt, changed, foreign) reads an item, **Then** a refusal.
+5. **Given** an item was replaced (deleted and created again by another process), **Then** the read
+   exits with the error `not protected` and does not give the replaced value.
 
-### User Story 2 - Обновление helper (Priority: P1)
+### User Story 2 - Helper update (Priority: P1)
 
 **Acceptance Scenarios**:
 
-1. **Given** код helper изменился, **When** `./install.sh`, **Then** новый helper собирается
-   рядом, старый читает все записи (один Touch ID), новый записывает их, значения сверяются,
-   потом новый заменяет старый.
-2. **Given** код helper не менялся, **Then** пересборки нет.
-3. **Given** перенос не прошёл, **Then** старый helper остаётся, записи на месте.
+1. **Given** the helper code changed, **When** `./install.sh`, **Then** the new helper is built
+   next to the old one. The old one reads all items (one Touch ID), the new one writes them, the values are compared,
+   then the new one replaces the old one.
+2. **Given** the helper code did not change, **Then** there is no rebuild.
+3. **Given** the migration failed, **Then** the old helper stays, the items are in place.
 
-### User Story 3 - Выключение (Priority: P2)
+### User Story 3 - Turning off (Priority: P2)
 
-1. **When** `secret touchid off`, **Then** после Touch ID записи возвращаются в обычный режим
-   (создатель `security`), политика и отметка grace удаляются.
+1. **When** `secret touchid off`, **Then** after Touch ID the items go back to normal mode
+   (creator `security`), the policy and the grace stamp are deleted.
 
 ### Edge Cases
 
-- Политику (`__secret-cli.policy`) удалили: helper считает grace равным 0 и спрашивает Touch ID каждый раз.
-- Отметку grace подделали: helper проверяет HMAC отметки ключом из политики, подделка не проходит.
-- Перенос прервался между шагами: запись `NAME#new` остаётся, следующий перенос её доделывает.
-- Helper не собран, а записи защищены: чтение завершается ошибкой с подсказкой `./install.sh`.
+- The policy (`__secret-cli.policy`) was deleted: the helper takes grace as 0 and asks for Touch ID every time.
+- The grace stamp was faked: the helper checks the HMAC of the stamp with the key from the policy, a fake does not pass.
+- The migration stopped between steps: the item `NAME#new` stays, the next migration finishes it.
+- The helper is not built, but the items are protected: the read exits with an error and the hint `./install.sh`.
 
 ## Requirements *(mandatory)*
 
-- **FR-001**: Helper: `status`, `auth`, `read`, `write`, `delete`, `policy`; UI keychain выключен.
-- **FR-002**: `read KC REASON NAME...` печатает `hex(значение)` по строке на имя. Touch ID внутри helper. Запись, которую helper не создавал, — ошибка `not protected: NAME`.
-- **FR-003**: `write KC NAME [--comment C] [--expiry D] [--keep-attrs]`, значение из stdin. Чужая запись заменяется так: `NAME#new` → удалить старую → переименовать.
-- **FR-004**: Политика — запись `__secret-cli.policy`, которую создал helper: grace и случайный ключ HMAC. Отметка grace — файл `~/.local/state/secret/touchid-ok`: время и HMAC.
-- **FR-005**: Сборка ad-hoc с hardened runtime (`codesign -s - -o runtime`). Хэш исходника хранится в `build/secret-auth.src-sha256`. Если он изменился — перенос (US2).
-- **FR-006**: Тестовый helper собирается с `-D SECRET_TEST`: ответ Touch ID берётся из файла. В рабочем helper такого кода нет.
-- **FR-007**: `bin/secret`: в защищённом режиме значения читаются и пишутся только через helper. `ls`, `has`, `check` читают атрибуты через `security` без `-w`. Записи `__secret-cli.*` в `ls` не показываются.
-- **FR-008**: Без helper и в обычном режиме команда работает как раньше.
+- **FR-001**: Helper: `status`, `auth`, `read`, `write`, `delete`, `policy`; the keychain UI is off.
+- **FR-002**: `read KC REASON NAME...` prints `hex(value)`, one line per name. Touch ID is inside the helper. An item that the helper did not create is the error `not protected: NAME`.
+- **FR-003**: `write KC NAME [--comment C] [--expiry D] [--keep-attrs]`, the value from stdin. A foreign item is replaced like this: `NAME#new` → delete the old one → rename.
+- **FR-004**: The policy is the item `__secret-cli.policy` that the helper created: grace and a random HMAC key. The grace stamp is the file `~/.local/state/secret/touchid-ok`: time and HMAC.
+- **FR-005**: An ad-hoc build with hardened runtime (`codesign -s - -o runtime`). The hash of the source is kept in `build/secret-auth.src-sha256`. If it changed — migration (US2).
+- **FR-006**: The test helper is built with `-D SECRET_TEST`: the Touch ID answer comes from a file. The production helper has no such code.
+- **FR-007**: `bin/secret`: in protected mode, values are read and written only through the helper. `ls`, `has`, `check` read the attributes through `security` without `-w`. The items `__secret-cli.*` are not shown in `ls`.
+- **FR-008**: Without the helper and in normal mode, the command works as before.
 
 ## Success Criteria *(mandatory)*
 
-- **SC-001**: Тест: защищённую запись другой бинарник прочитать не может (код ошибки, без окна).
-- **SC-002**: Тест: перенос старый → новый helper сохраняет все значения, комментарии и сроки.
-- **SC-003**: Тест: подменённая запись даёт `not protected`.
-- **SC-004**: Ручная проверка на keychain владельца: после `touchid on` команда `security find-generic-password -w` показывает окно, чтение через `secret` спрашивает Touch ID.
+- **SC-001**: Test: another binary cannot read a protected item (an error code, no dialog).
+- **SC-002**: Test: the migration old → new helper keeps all values, comments and expiry dates.
+- **SC-003**: Test: a replaced item gives `not protected`.
+- **SC-004**: Manual check on the owner's keychain: after `touchid on`, the command `security find-generic-password -w` shows a dialog, a read through `secret` asks for Touch ID.
 
 ## Assumptions
 
-- Комментарий, срок и само наличие записи защищены хуже значения: их может поменять или удалить любой процесс пользователя (research R6, R7).
-- Пока идёт `secret run`, значения лежат в окружении дочернего процесса. Процессы того же пользователя его видят (`ps -E`). Это свойство передачи через окружение.
-- Окно `security wants to access` при защищённых записях, которое появилось без участия `secret`, — признак чтения в обход. Ответ — Deny.
+- The comment, the expiry and the existence of the item itself are protected worse than the value: any process of the user can change or delete them (research R6, R7).
+- While `secret run` goes on, the values are in the environment of the child process. Processes of the same user see it (`ps -E`). This is a property of passing through the environment.
+- A `security wants to access` dialog for protected items that appeared without `secret` is a sign of a read around it. The answer is Deny.
