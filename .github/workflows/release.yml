@@ -24,7 +24,7 @@ jobs:
           manifest-file: .release-please-manifest.json
 
   # Provenance for the tag tarball that the Homebrew formula downloads:
-  #   gh attestation verify secret-X.Y.Z.tar.gz -R andrewkomkov/secret-cli
+  #   gh attestation verify secret-X.Y.Z.tar.gz -R secretbar/secretbar
   attest:
     needs: release-please
     if: needs.release-please.outputs.created == 'true'
@@ -70,9 +70,9 @@ jobs:
           export GIT_SSH_COMMAND="ssh -i ~/.ssh/tap -o IdentitiesOnly=yes"
           url="https://github.com/$REPO/archive/refs/tags/$TAG.tar.gz"
           sha="$(curl -fsSL --retry 5 "$url" | sha256sum | cut -d' ' -f1)"
-          git clone --depth 1 git@github.com:andrewkomkov/homebrew-secret.git tap
+          git clone --depth 1 git@github.com:secretbar/homebrew-tap.git tap
           cd tap
-          sed -i -E "s|^  url \".*\"$|  url \"$url\"|; s|^  sha256 \".*\"$|  sha256 \"$sha\"|" Formula/secret.rb
+          sed -i -E "s|^  url \".*\"$|  url \"$url\"|; s|^  sha256 \".*\"$|  sha256 \"$sha\"|" Formula/secretbar.rb
           git diff --stat
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

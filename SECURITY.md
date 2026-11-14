@@ -4,7 +4,7 @@
 
 ## Report a vulnerability
 
-Use [private vulnerability reporting](https://github.com/andrewkomkov/secret-cli/security/advisories/new)
+Use [private vulnerability reporting](https://github.com/secretbar/secretbar/security/advisories/new)
 on GitHub. Do not open a public issue for a vulnerability.
 
 Include the version (`secret version`), the macOS version, the store (`secret touchid status`) and
@@ -37,5 +37,5 @@ or compromised macOS, and the limits that the README lists under "What remains".
 Each release tarball has a build provenance attestation:
 
 ```sh
-gh attestation verify secret-X.Y.Z.tar.gz -R andrewkomkov/secret-cli
+gh attestation verify secret-X.Y.Z.tar.gz -R secretbar/secretbar
 ```

@@ -1,16 +1,16 @@
 <div align="center">
 
-# secret
+# SecretBar
 
-**Secrets in the macOS keychain that an AI agent uses by name, without ever seeing a value.**
+**Secrets your AI agent uses by name and never sees. The command `secret` and the menu bar app SecretBar keep them in the Secure Enclave of your Mac.**
 
-**English** · [Русский](README.ru.md) · [Website](https://andrewkomkov.github.io/secret-cli/)
+**English** · [Русский](README.ru.md) · [Website](https://secretbar.github.io)
 
 ![macOS](https://img.shields.io/badge/macOS-only-000000?logo=apple&logoColor=white)
 ![bash 3.2](https://img.shields.io/badge/bash-3.2-4EAA25?logo=gnubash&logoColor=white)
 ![deps](https://img.shields.io/badge/dependencies-none-blue)
-[![CI](https://github.com/andrewkomkov/secret-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/andrewkomkov/secret-cli/actions/workflows/ci.yml)
-[![release](https://img.shields.io/github/v/release/andrewkomkov/secret-cli?sort=semver)](https://github.com/andrewkomkov/secret-cli/releases)
+[![CI](https://github.com/secretbar/secretbar/actions/workflows/ci.yml/badge.svg)](https://github.com/secretbar/secretbar/actions/workflows/ci.yml)
+[![release](https://img.shields.io/github/v/release/secretbar/secretbar?sort=semver)](https://github.com/secretbar/secretbar/releases)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey)
 
 [Quick start](#quick-start) ·
@@ -41,12 +41,12 @@ encrypts each value, and the value opens only after Touch ID or Apple Watch. The
 them into the environment of a process by name. A human types a value into a dialog with a hidden
 field, never into the chat with the agent. The agent works with names only.
 
-<p align="center"><img src="site/img/main-dark.png" width="760" alt="SecretBar main window"></p>
+<p align="center"><img src="docs/img/main-dark.png" width="760" alt="SecretBar main window"></p>
 
 ## Quick start
 
 ```sh
-brew install andrewkomkov/secret/secret   # the command, both helpers, zsh completion
+brew install secretbar/tap/secretbar   # the command, both helpers, zsh completion
 secret init                               # create the keychain and set its password
 secret ask MY_TOKEN                       # store the first secret
 secret run --mask MY_TOKEN -- ./deploy.sh
@@ -55,13 +55,13 @@ secret run --mask MY_TOKEN -- ./deploy.sh
 The Claude Code hook and the SecretBar menu bar app (it needs Xcode):
 
 ```sh
-"$(brew --prefix secret)/libexec/install.sh" --claude-hook --app
+"$(brew --prefix secretbar)/libexec/install.sh" --claude-hook --app
 ```
 
 From source:
 
 ```sh
-git clone https://github.com/andrewkomkov/secret-cli && cd secret-cli
+git clone https://github.com/secretbar/secretbar && cd secretbar
 ./install.sh --claude-hook     # symlink in ~/.local/bin, helpers, zsh completion, hook
 ```
 
@@ -313,8 +313,8 @@ VALUE as an argument shows in `ps` and in the shell history. Use stdin or `ask`.
 ## SecretBar
 
 <p align="center">
-  <img src="site/img/menubar-dark.png" width="300" alt="SecretBar menu">
-  <img src="site/img/quick-light.png" width="460" alt="SecretBar quick search">
+  <img src="docs/img/menubar-dark.png" width="300" alt="SecretBar menu">
+  <img src="docs/img/quick-light.png" width="460" alt="SecretBar quick search">
 </p>
 
 ```sh
@@ -340,7 +340,7 @@ VALUE as an argument shows in `ps` and in the shell history. Use stdin or `ask`.
   Paste do not keep it. The clipboard is cleared after 30 seconds.
 - **Activity**: the latest requests (agent or you) and the Touch ID prompts from the agent log.
 - **Notifications**: secrets expired or expiring within 7 days.
-- **Languages**: English and Russian, after the language of macOS.
+- **Languages**: English, German, French, Spanish, Italian, Portuguese, Polish and Russian, after the language of macOS.
 
 The app never calls the keychain itself. All actions go through `secret` and the helper, so
 Touch ID, grace and the log work as in the terminal. A value never gets into the memory of the
@@ -433,7 +433,7 @@ It is made for work with an agent: output masking, the hook, a log that marks th
 <summary>How do I move secrets to another Mac?</summary>
 
 On the old Mac, run `secret export FILE`. On the new one, run
-`brew install andrewkomkov/secret/secret && secret init && secret restore FILE`.
+`brew install secretbar/tap/secretbar && secret init && secret restore FILE`.
 
 </details>
 
@@ -492,7 +492,7 @@ in the run directory. Dialogs and real Touch ID are checked by hand. CI runs the
 macOS 15 and macOS 26 runners for each push and pull request.
 
 **Verify a release.** Each release tarball has a build provenance attestation:
-`gh attestation verify secret-X.Y.Z.tar.gz -R andrewkomkov/secret-cli`. To report a vulnerability,
+`gh attestation verify secret-X.Y.Z.tar.gz -R secretbar/secretbar`. To report a vulnerability,
 see [SECURITY.md](SECURITY.md).
 
 Each change goes through spec-kit: `specs/NNN-*/` with `spec.md`, `plan.md`, `tasks.md`. The rules
@@ -507,7 +507,6 @@ app/                           SecretBar: SwiftUI, App Intents, Xcode project, b
 hooks/                         Claude Code hook and its installer
 completions/_secret            zsh completion
 docs/claude-md-secrets.md      rules for the agent
-site/                          the website (GitHub Pages)
 tests/run.sh                   tests
 ```
 

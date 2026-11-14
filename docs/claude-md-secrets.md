@@ -9,8 +9,8 @@ in the custom keychain `secrets` (`~/Library/Keychains/secrets.keychain-db`).
 `secret` command (`~/.local/bin/secret`) for all work with them. Run `secret help` for the full
 usage.
 
-The source of `secret` is the repository `github.com/andrewkomkov/secret-cli`. With Homebrew,
-`secret` is in `$(brew --prefix secret)/libexec`. From a clone, `~/.local/bin/secret` is a symlink
+The source of `secret` is the repository `github.com/secretbar/secretbar`. With Homebrew,
+`secret` is in `$(brew --prefix secretbar)/libexec`. From a clone, `~/.local/bin/secret` is a symlink
 to `bin/secret` in the clone. Make changes to the command in that repository, run
 `tests/run.sh` there and commit. `~/.claude/CLAUDE.md` imports this file
 (`docs/claude-md-secrets.md`) with an `@` line, so a change here goes to every session.
