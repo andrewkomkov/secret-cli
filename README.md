@@ -479,8 +479,12 @@ The tests create their own keychains and delete them at the end. The real keycha
 clipboard and the Keychain Access list do not change. A test build of the helper
 (`-D SECRET_TEST`, answers from a file) checks Touch ID. It has another `cdhash` and no access to
 real items. A test build `secret-vault-test` checks the Secure Enclave store with a software key
-in the run directory. Dialogs and real Touch ID are checked by hand. CI runs the same suite on a
-macOS runner for each push and pull request.
+in the run directory. Dialogs and real Touch ID are checked by hand. CI runs the same suite on
+macOS 15 and macOS 26 runners for each push and pull request.
+
+**Verify a release.** Each release tarball has a build provenance attestation:
+`gh attestation verify secret-X.Y.Z.tar.gz -R andrewkomkov/secret-cli`. To report a vulnerability,
+see [SECURITY.md](SECURITY.md).
 
 Each change goes through spec-kit: `specs/NNN-*/` with `spec.md`, `plan.md`, `tasks.md`. The rules
 are in `.specify/memory/constitution.md`. Commits follow Conventional Commits. release-please

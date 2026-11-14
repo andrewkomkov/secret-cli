@@ -1117,6 +1117,14 @@ check "024: version" bash -c "'$SECRET' version | grep -qxE 'secret [0-9]+\.[0-9
 check "024: --version" test "$(s --version)" = "$(s version)"
 check "024: version is marked for release-please" grep -qE '^VERSION="[0-9.]+" # x-release-please-version$' "$SECRET"
 
+# --- 030 T016: the extension strings have en and ru, and every key in use exists
+EXT="$ROOT/app/extension"
+ext_keys() { grep -oE '^  "[A-Za-z]+": \{' "$1" | cut -d'"' -f2 | sort; }
+check "030: extension en and ru have the same keys" test "$(ext_keys "$EXT/_locales/en/messages.json")" = "$(ext_keys "$EXT/_locales/ru/messages.json")"
+ext_used() { { grep -ohE "data-i18n(-title)?=\"[A-Za-z]+\"" "$EXT"/*.html | cut -d'"' -f2; grep -ohE "__MSG_[A-Za-z]+__" "$EXT/manifest.json" | sed 's/__MSG_//; s/__$//'; grep -ohE "\bt\('[A-Za-z]+'" "$EXT"/*.js | cut -d"'" -f2; } | sort -u; }
+check "030: every extension string in use has an en message" bash -c "$(declare -f ext_keys ext_used); EXT='$EXT'; [ -z \"\$(comm -23 <(ext_used) <(ext_keys \"\$EXT/_locales/en/messages.json\"))\" ]"
+check "030: extension pages use the messages, not English literals" bash -c "! grep -qE \"show\\('|textContent = '\" '$EXT'/popup.js '$EXT'/options.js"
+
 # --- 030: bridge daemon (loopback), without a browser
 BR_DIR="$ROOT/build/test"
 BR="$BR_DIR/secret-bridge-test"

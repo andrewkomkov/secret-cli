@@ -1,0 +1,93 @@
+{
+  "extName": {
+    "message": "Secret Cookie Bridge"
+  },
+  "extDescription": {
+    "message": "Send the cookies of the current site to the local secret command as a cookie jar."
+  },
+  "actionTitle": {
+    "message": "Send cookies to secret"
+  },
+  "sendButton": {
+    "message": "Send cookies to secret"
+  },
+  "settingsLink": {
+    "message": "Settings"
+  },
+  "settingsTitle": {
+    "message": "Secret Cookie Bridge: settings"
+  },
+  "tokenLabel": {
+    "message": "Token (from $CMD$)",
+    "placeholders": {
+      "cmd": {
+        "content": "$1"
+      }
+    }
+  },
+  "nameLabel": {
+    "message": "Secret name (UPPER_SNAKE_CASE)"
+  },
+  "portLabel": {
+    "message": "Port"
+  },
+  "saveButton": {
+    "message": "Save"
+  },
+  "errNoConfig": {
+    "message": "Set the token and the secret name in Settings first."
+  },
+  "errNoPage": {
+    "message": "Open a web page first."
+  },
+  "errNoCookies": {
+    "message": "No cookies for $HOST$. Check the site access for the extension in Safari.",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "stored": {
+    "message": "Stored $COUNT$ cookies of $HOST$ as $NAME$.",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "host": {
+        "content": "$2"
+      },
+      "name": {
+        "content": "$3"
+      }
+    }
+  },
+  "errRefused": {
+    "message": "The daemon refused: HTTP $STATUS$ $TEXT$",
+    "placeholders": {
+      "status": {
+        "content": "$1"
+      },
+      "text": {
+        "content": "$2"
+      }
+    }
+  },
+  "errFailed": {
+    "message": "Failed: $MSG$\nIs the daemon running? (secret cookie bridge start)",
+    "placeholders": {
+      "msg": {
+        "content": "$1"
+      }
+    }
+  },
+  "errName": {
+    "message": "The name must match [A-Za-z_][A-Za-z0-9_.-]*."
+  },
+  "errPort": {
+    "message": "The port must be 1-65535."
+  },
+  "saved": {
+    "message": "Saved."
+  }
+}
