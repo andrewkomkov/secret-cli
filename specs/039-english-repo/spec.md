@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-14
 
-**Status**: In progress
+**Status**: Done 2026-11-14
 
 **Input**: Owner, 2026-11-14: "rewrite the whole repo in English".
 

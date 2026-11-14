@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-14
 
-**Status**: In progress
+**Status**: Done 2026-11-14. Launch on Product Hunt 2026-11-16
 
 <!-- STE deviation: the input is a quote of the owner. -->
 **Input**: Owner, 2026-11-14: "the software is good enough for Product Hunt. Move it to a separate
