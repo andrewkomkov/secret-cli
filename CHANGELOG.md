@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.0](https://github.com/secretbar/secretbar/compare/v1.8.0...v1.9.0) (2026-11-14)
+
+
+### Features
+
+* **app:** add german, french, spanish, italian, portuguese and polish ([e0f00b3](https://github.com/secretbar/secretbar/commit/e0f00b3edf0efa9ab9de7b6b0abce1864557532a))
+
 ## [1.8.0](https://github.com/andrewkomkov/secret-cli/compare/v1.7.1...v1.8.0) (2026-11-14)
 
 
