@@ -1,9 +1,4 @@
 #!/bin/bash
-# Ставит secret в ~/.local/bin как symlink на эту репу: правка в репе сразу видна в PATH.
-#   ./install.sh                 команда
-#   ./install.sh --claude-hook   ещё хук PreToolUse в ~/.claude/settings.json и правила агента в
-#                                ~/.claude/CLAUDE.md (hooks/install-claude.sh)
-#   ./install.sh --app           ещё приложение SecretBar в ~/Applications и его запуск
 set -euo pipefail
 root="$(cd "$(dirname "$0")" && pwd)"
 claude_hook=0; app=0; legacy_only=0
@@ -16,7 +11,6 @@ for a in "$@"; do
   esac
 done
 
-# Хранилища data protection больше нет (018): его LaunchAgent, сборки и profile уходят.
 drop_legacy() {
   local plist="$HOME/Library/LaunchAgents/secretcli.renew.plist" f
   if [ -f "$plist" ]; then
@@ -142,9 +136,6 @@ vault_build || true
 cookies_build || true
 bridge_build || true
 
-# SecretBar (012, 014): приложение в строке меню, profile ему не нужен. Ставится в /Applications:
-# App Intents и Spotlight работают с приложениями оттуда. С --app ставится; если уже стоит,
-# обновляется при каждом install.sh. Старая копия из ~/Applications удаляется.
 dest="/Applications/SecretBar.app"
 [ -w /Applications ] || dest="$HOME/Applications/SecretBar.app"
 if [ $app -eq 1 ] || [ -d "$dest" ] || [ -d "$HOME/Applications/SecretBar.app" ]; then

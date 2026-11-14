@@ -1,50 +1,53 @@
-# Feature Specification: Служебные записи без Touch ID
+# Feature Specification: Metadata items without Touch ID
 
-**Feature Branch**: `011-meta-items`. Работа идёт в `main` локальной репы.
+**Feature Branch**: `011-meta-items`. The work is done in `main` of the local repository.
 
 **Created**: 2026-10-07
 
-**Status**: Complete — 2026-10-07, рабочее хранилище переведено (T008)
+**Status**: Complete — 2026-10-07, the production store is converted (T008)
 
-**Input**: Владелец прикладывал палец 3 раза на одну команду. Системный журнал `coreauthd`
-показал причину. Перед каждой командой `bin/secret` вызывает `policy show` и `list`. Эти вызовы
-читают атрибуты записей под `.userPresence`, и keychain спрашивает Touch ID и на атрибуты.
+**Input**: The owner touched the sensor 3 times for one command. The system log `coreauthd`
+showed the cause. Before each command, `bin/secret` calls `policy show` and `list`. These calls
+read the attributes of items under `.userPresence`, and the keychain asks for Touch ID for the
+attributes too.
 
 ## User Scenarios & Testing *(mandatory)*
 
-<!-- утр-100: 8.2 — заголовок задан шаблоном spec-kit -->
-### User Story 1 - Одно касание на grace (Priority: P1)
+<!-- ste: E8.2 — the spec-kit template sets this heading -->
+### User Story 1 - One touch per grace (Priority: P1)
 
-**Independent Test**: тестовая сборка пишет в журнал каждое обращение к записи со значением.
-Команды кроме чтения значения не делают таких обращений.
+**Independent Test**: the test build writes each access to an item with a value to a log.
+Commands other than reading a value make no such access.
 
 **Acceptance Scenarios**:
 
-1. **When** `ls`, `ls -l`, `has`, `check`, `note`, `expire`, `set`, `rm`, `touchid status`,
-   **Then** Touch ID не нужен.
-2. **When** первое чтение значения в grace, **Then** одно окно Touch ID на все записи.
-3. **When** следующие чтения в grace, **Then** окон нет.
+1. **When** `ls`, `ls -l`, `has`, `check`, `note`, `expire`, `set`, `rm`, `touchid status` run,
+   **Then** Touch ID is not necessary.
+2. **When** the first read of a value in grace occurs, **Then** there is one Touch ID window for
+   all items.
+3. **When** the next reads in grace occur, **Then** there are no windows.
 
 ### Edge Cases
 
-- Хранилище из фичи 009 без служебных записей: `secret __reindex` создаёт их, одно окно Touch ID.
-- Служебная запись есть, записи со значением нет: чтение даёт `not found`.
+- A store from feature 009 without metadata items: `secret __reindex` creates them, one Touch ID
+  window.
+- The metadata item exists, the item with the value does not: a read gives `not found`.
 
 ## Requirements *(mandatory)*
 
-<!-- утр-100: 1.9 — идентификаторы требований заданы шаблоном spec-kit -->
-- **FR-001**: Для каждого секрета есть служебная запись: account `secret-cli.meta`, имя,
-  комментарий, срок, без `.userPresence`.
-- **FR-002**: `list`, `has`, `attrs`, `policy show` работают только со служебными записями.
-- **FR-003**: Записи со значением читает только агент. Агент проверяет изменение записи по датам
-  служебной записи.
-- **FR-004**: Проверка перед командой — `ping`, без keychain.
-- **FR-005**: Журнал агента `~/.local/state/secret/agent.log`: окна Touch ID, системные окна,
-  без значений.
+<!-- ste: E1.9 — the spec-kit template sets the requirement IDs -->
+- **FR-001**: Each secret has a metadata item: account `secret-cli.meta`, name, comment,
+  expiry, without `.userPresence`.
+- **FR-002**: `list`, `has`, `attrs`, `policy show` work only with metadata items.
+- **FR-003**: Only the agent reads the items with values. The agent finds a change of an item
+  from the dates of the metadata item.
+- **FR-004**: The check before a command is `ping`, without the keychain.
+- **FR-005**: The agent log `~/.local/state/secret/agent.log`: Touch ID windows, system windows,
+  no values.
 
 ## Success Criteria *(mandatory)*
 
-<!-- утр-100: 1.9 — идентификаторы критериев заданы шаблоном spec-kit -->
-- **SC-001**: Тест: только агент обращается к записям со значением.
-- **SC-002**: Ручная проверка. `ls`, `ls -l`, `has`, `touchid status` не открывают окон. Два
-  `run` подряд открывают одно окно.
+<!-- ste: E1.9 — the spec-kit template sets the criteria IDs -->
+- **SC-001**: Test: only the agent accesses the items with values.
+- **SC-002**: Manual check. `ls`, `ls -l`, `has`, `touchid status` open no windows. Two `run` in
+  a row open one window.

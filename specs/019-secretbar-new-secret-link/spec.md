@@ -1,44 +1,44 @@
-# Feature Specification: SecretBar — «Новый секрет…» в меню и ссылка после создания
+# Feature Specification: SecretBar — "New secret…" in the menu and a reference after create
 
-**Feature Branch**: `019-secretbar-new-secret-link`. Работа идёт в `main`.
+**Feature Branch**: `019-secretbar-new-secret-link`. The work goes on in `main`.
 
 **Created**: 2026-10-22
 
 **Status**: In progress
 
-**Input**: Владелец: в выпадающее меню окна в строке меню добавить пункт «Новый секрет…». Когда
-секрет создан из UI, ссылка на него сама копируется в буфер обмена.
+**Input**: The owner: "add the item 'New secret…' to the drop-down menu of the menu bar window. When
+a secret is created from the UI, the reference to it is copied to the clipboard automatically."
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Новый секрет из строки меню (Priority: P1)
+### User Story 1 - New secret from the menu bar (Priority: P1)
 
-1. **Given** открыто окно SecretBar в строке меню, **When** человек выбирает «…» → «Новый
-   секрет…», **Then** открывается главное окно с листом создания секрета.
-2. Если главное окно уже открыто и в нём открыт другой лист, новый лист не открывается
-   поверх.
+1. **Given** the SecretBar window in the menu bar is open, **When** the person selects "…" → "New
+   secret…", **Then** the main window opens with the sheet to create a secret.
+2. If the main window is already open and another sheet is open in it, the new sheet does not open
+   on top.
 
-### User Story 2 - Ссылка в буфере после создания (Priority: P1)
+### User Story 2 - Reference in the clipboard after create (Priority: P1)
 
-1. **When** человек сохраняет новый секрет (ввод или генерация), **Then** в буфере обмена
-   лежит `secret:NAME`, тост говорит «NAME сохранён · ссылка secret:NAME в буфере».
-2. Если сохранить не удалось, буфер не меняется.
-3. Изменение и переименование существующего секрета буфер не меняют.
-4. Значение секрета в буфер не попадает.
+1. **When** the person saves a new secret (typed or generated), **Then** the clipboard
+   holds `secret:NAME`, the toast says "NAME saved · reference secret:NAME in the clipboard".
+2. If the save fails, the clipboard does not change.
+3. A change or a rename of an existing secret does not change the clipboard.
+4. The value of the secret does not go into the clipboard.
 
 ## Requirements *(mandatory)*
 
-- **FR-001**: в меню «…» окна в строке меню есть пункт «Новый секрет…».
-- **FR-002**: пункт открывает главное окно и лист создания.
-- **FR-003**: после успешного создания из UI ссылка `secret:NAME` лежит в буфере обмена.
-- **FR-004**: команда `secret` не меняется.
+- **FR-001**: the "…" menu of the menu bar window has the item "New secret…".
+- **FR-002**: the item opens the main window and the create sheet.
+- **FR-003**: after a successful create from the UI, the reference `secret:NAME` is in the clipboard.
+- **FR-004**: the `secret` command does not change.
 
 ## Success Criteria *(mandatory)*
 
-- **SC-001**: новый секрет из строки меню — два щелчка до листа создания.
-- **SC-002**: сразу после «Сохранить» ссылку можно вставить в `.env` без отдельного копирования.
+- **SC-001**: a new secret from the menu bar — two clicks to the create sheet.
+- **SC-002**: right after "Save", the reference can be pasted into `.env` without a separate copy.
 
 ## Assumptions
 
-- Ссылка — формат `secret:NAME` из конституции (V), тот же, что у «Копировать ссылку».
-- Создание из CLI (`secret set`, `secret ask`) буфер не трогает.
+- The reference is the `secret:NAME` format from the constitution (V), the same as for "Copy reference".
+- A create from the CLI (`secret set`, `secret ask`) does not touch the clipboard.

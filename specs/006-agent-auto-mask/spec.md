@@ -1,48 +1,48 @@
-# Feature Specification: Маскировка для агента по умолчанию
+# Feature Specification: Masking for the agent by default
 
-**Feature Branch**: `006-agent-auto-mask` (работа идёт в `main` локальной репы)
+**Feature Branch**: `006-agent-auto-mask` (the work is done in `main` of the local repo)
 
 **Created**: 2026-10-02
 
 **Status**: Done — 2026-10-02
 
-**Input**: Сейчас `--mask` держится на правиле в `CLAUDE.md`: если агент не напишет флаг,
-значение уйдёт в вывод. Ещё маскировка не ловит закодированное значение.
+**Input**: Now `--mask` rests on a rule in `CLAUDE.md`: if the agent does not write the flag,
+the value goes to the output. Also, masking does not catch an encoded value.
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Агент не может забыть `--mask` (Priority: P1)
+### User Story 1 - The agent cannot forget `--mask` (Priority: P1)
 
 **Acceptance Scenarios**:
 
-1. **Given** `CLAUDECODE=1`, **When** `secret run NAME -- cmd` без `--mask`, **Then** вывод маскируется.
-2. **Given** `CLAUDECODE=1`, **When** `secret run --no-mask ...`, **Then** маскировка остаётся, в stderr предупреждение.
-3. **Given** человек без `CLAUDECODE`, **When** `--no-mask` или без флага, **Then** вывод без маскировки, как раньше.
-4. **Given** `CLAUDECODE=1`, **When** cmd печатает всё окружение (`python3 -c 'print(os.environ)'`), **Then** значения секретов в выводе — `***`.
+1. **Given** `CLAUDECODE=1`, **When** `secret run NAME -- cmd` without `--mask`, **Then** the output is masked.
+2. **Given** `CLAUDECODE=1`, **When** `secret run --no-mask ...`, **Then** masking stays, a warning goes to stderr.
+3. **Given** a human without `CLAUDECODE`, **When** `--no-mask` or no flag, **Then** the output is not masked, as before.
+4. **Given** `CLAUDECODE=1`, **When** cmd prints the whole environment (`python3 -c 'print(os.environ)'`), **Then** the secret values in the output are `***`.
 
-### User Story 2 - Закодированное значение (Priority: P2)
+### User Story 2 - Encoded value (Priority: P2)
 
 **Acceptance Scenarios**:
 
-1. **When** cmd печатает значение в base64 или с URL-кодированием, **Then** вместо него `***`.
+1. **When** cmd prints the value in base64 or URL-encoded, **Then** `***` is in its place.
 
 ### Edge Cases
 
-- Значение короче 8 символов: base64 и URL-варианты не маскируются, чтобы не заменять случайные куски текста. Само значение маскируется.
-- URL-вариант совпадает со значением (нет символов для кодирования): одна замена.
+- A value shorter than 8 characters: the base64 and URL variants are not masked, so that random pieces of text are not replaced. The value itself is masked.
+- The URL variant is the same as the value (no characters to encode): one replacement.
 
 ## Requirements *(mandatory)*
 
-- **FR-001**: `CLAUDECODE` непустой → `run` всегда с маскировкой; `--no-mask` в этом случае даёт предупреждение.
-- **FR-002**: `--no-mask` для человека отключает `SECRET_RUN_MASK=1`.
-- **FR-003**: Маскировщик заменяет значение, его base64 (стандартный и URL-safe, с `=` и без) и URL-кодирование.
+- **FR-001**: `CLAUDECODE` is not empty → `run` always masks; `--no-mask` in this case gives a warning.
+- **FR-002**: `--no-mask` for a human turns off `SECRET_RUN_MASK=1`.
+- **FR-003**: The masker replaces the value, its base64 (standard and URL-safe, with and without `=`) and its URL encoding.
 
 ## Success Criteria *(mandatory)*
 
-- **SC-001**: Тест: под `CLAUDECODE=1` вывод окружения через `python3`/`env` не содержит значений.
-- **SC-002**: `tests/run.sh` проходит целиком.
+- **SC-001**: Test: under `CLAUDECODE=1`, the environment printed through `python3`/`env` has no values.
+- **SC-002**: `tests/run.sh` passes in full.
 
 ## Assumptions
 
-- `base64(user:pass)` в `Authorization: Basic` не ловится: в нём другое значение. Это записано в README.
-- Агент может запустить команду без `CLAUDECODE` (`env -u CLAUDECODE`). Фича защищает от ошибки, не от умысла.
+- `base64(user:pass)` in `Authorization: Basic` is not caught: it holds a different value. This is written in the README.
+- The agent can run a command without `CLAUDECODE` (`env -u CLAUDECODE`). The feature protects against a mistake, not against intent.

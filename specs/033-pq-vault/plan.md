@@ -1,4 +1,4 @@
-# Implementation Plan: постквантовая защита хранилища Secure Enclave
+# Implementation Plan: post-quantum protection of the Secure Enclave store
 
 **Spec**: `specs/033-pq-vault/spec.md`
 
@@ -6,59 +6,62 @@
 
 ### helper/store/main.swift
 
-- `VaultKeys` и `VaultHeader`: новые поля `kpub: Data?` (открытый ключ ML-KEM-768) и
-  `kse: Data?` (обёртка ключа Secure Enclave, в тестовой сборке — seed программного ключа).
-  Старый JSON без полей даёт `nil`.
-- Код ML-KEM стоит под `#if compiler(>=6.2)` и `if #available(macOS 26, *)`. Swift 6.1 (CI
-  `macos-15`) собирает helper без ML-KEM. Функция `pqSupported()` говорит, есть ли поддержка.
-- `seal(plain, name, pub, kpub)`: при `kpub` — формат v2, иначе v1, как раньше.
-  v2: `0x02 | ct (1088) | eph (65) | AES-GCM`. Ключ:
+- `VaultKeys` and `VaultHeader`: new fields `kpub: Data?` (the ML-KEM-768 public key) and
+  `kse: Data?` (the wrapped Secure Enclave key; in the test build, the seed of a software key).
+  Old JSON without the fields gives `nil`.
+- The ML-KEM code is under `#if compiler(>=6.2)` and `if #available(macOS 26, *)`. Swift 6.1 (CI
+  `macos-15`) builds the helper without ML-KEM. The function `pqSupported()` tells whether there
+  is support.
+- `seal(plain, name, pub, kpub)`: with `kpub`, format v2; otherwise v1, as before.
+  v2: `0x02 | ct (1088) | eph (65) | AES-GCM`. Key:
   `HKDF-SHA256(ikm: ecdh || mlkem, salt: eph || ct, info: "secret-cli vault v2|" + name)`.
-- `unseal(blob, name, se, kse, ctx)`: первый байт `0x04` — v1, `0x02` — v2. Для v2 нужен `kse`,
-  иначе ошибка `this helper cannot open post-quantum values`.
-- `requirePresence`: проверяет `.userPresence` у ключа P-256 и, для v2, у ключа ML-KEM.
-- Новое хранилище: `newKemKey()` при поддержке. Тестовая сборка с `SECRET_TEST_NO_PQ=1` ключ
-  ML-KEM не создаёт.
-- `readDoc`: если в записи keychain нет ключа ML-KEM, а в заголовке есть, helper берёт его из
-  заголовка. Ключ файла подтверждает заголовок. Так агент grace и окно между записью файла и
-  записи keychain работают. Разные ключи ML-KEM в записи и заголовке — ошибка.
-- `repair`: берёт `kpub`, `kse` из заголовка.
-- Новая команда helper `pq`: под блокировкой хранилища создаёт ключ ML-KEM (если его нет),
-  сохраняет его в запись keychain и заголовок, спрашивает Touch ID (`confirmedContext`), открывает
-  каждое значение v1 и закрывает его в v2. `check` и `wm` тоже. Метка `r` остаётся.
-- Новая команда helper `pq-status`: `on`, `off`, `partial N M`, `unsupported`. Без Touch ID.
+- `unseal(blob, name, se, kse, ctx)`: first byte `0x04` is v1, `0x02` is v2. v2 needs `kse`,
+  otherwise the error `this helper cannot open post-quantum values`.
+- `requirePresence`: checks `.userPresence` on the P-256 key and, for v2, on the ML-KEM key.
+- New store: `newKemKey()` when supported. The test build with `SECRET_TEST_NO_PQ=1` does not
+  create an ML-KEM key.
+- `readDoc`: if the keychain item has no ML-KEM key and the header has one, the helper takes it
+  from the header. The file key confirms the header. So the grace agent and the gap between the
+  file write and the keychain item write work. Different ML-KEM keys in the item and the header
+  are an error.
+- `repair`: takes `kpub`, `kse` from the header.
+- New helper command `pq`: under the store lock, it creates the ML-KEM key (if there is none),
+  saves it to the keychain item and the header, asks for Touch ID (`confirmedContext`), opens
+  each v1 value and seals it in v2. Also `check` and `wm`. The mark `r` stays.
+- New helper command `pq-status`: `on`, `off`, `partial N M`, `unsupported`. Without Touch ID.
 
 ### bin/secret
 
-- `touchid_store`: `pq` вызывает `"$STORE" pq`; `status` печатает вторую строку
-  `post-quantum: ...` из `pq-status`.
+- `touchid_store`: `pq` calls `"$STORE" pq`; `status` prints a second line
+  `post-quantum: ...` from `pq-status`.
 - Usage.
 
-### Тесты (tests/run.sh)
+### Tests (tests/run.sh)
 
-Если `pq-status` даёт `unsupported`, тесты PQ пишут `skip` и не падают.
+If `pq-status` gives `unsupported`, the PQ tests write `skip` and do not fail.
 
-- новое хранилище: `pq-status` = `on`, первый байт значения в файле нельзя проверить (файл
-  зашифрован), поэтому проверка через `pq-status`.
-- `SECRET_TEST_NO_PQ=1`: хранилище v1, `pq-status` = `off`.
-- `touchid pq`: один вопрос Touch ID, `pq-status` = `on`, значения, комментарии, сроки равны.
-- повторный `touchid pq`: без вопроса.
-- аренда до перевода переживает перевод.
-- отказ Touch ID: значения остаются v1 и читаются.
-- `touchid status` печатает строку `post-quantum:`.
+- new store: `pq-status` = `on`; the first byte of a value in the file cannot be checked (the
+  file is encrypted), so the check goes through `pq-status`.
+- `SECRET_TEST_NO_PQ=1`: store v1, `pq-status` = `off`.
+- `touchid pq`: one Touch ID question, `pq-status` = `on`, values, comments, expiry dates are
+  equal.
+- repeated `touchid pq`: no question.
+- a lease from before the migration survives the migration.
+- Touch ID refusal: the values stay v1 and are readable.
+- `touchid status` prints the line `post-quantum:`.
 
 ## Constitution Check
 
-- **I**: значения идут только между helper и Secure Enclave. Вывода значений нет.
-- **II**: перевод спрашивает Touch ID один раз. Ключ ML-KEM создаётся с `.userPresence`.
-- **III**: только CryptoKit из macOS. `swiftc` из Command Line Tools.
-- **IV**: тестовая сборка — программный ключ ML-KEM в каталоге прогона.
-- **V**: новая подкоманда `touchid pq`. `touchid status` получает вторую строку — отступление
-  ниже. Формат хранилища v1 читается всегда.
+- **I**: the values go only between the helper and the Secure Enclave. There is no value output.
+- **II**: the migration asks for Touch ID once. The ML-KEM key is created with `.userPresence`.
+- **III**: only CryptoKit from macOS. `swiftc` from the Command Line Tools.
+- **IV**: test build: a software ML-KEM key in the run directory.
+- **V**: new subcommand `touchid pq`. `touchid status` gets a second line — see the deviation
+  below. The store format v1 is always readable.
 
 ## Complexity Tracking
 
-| Отступление | Причина |
+| Deviation | Reason |
 |---|---|
-| `touchid status` печатает вторую строку | Статус защиты хранилища — часть статуса. SecretBar вывод `touchid status` не разбирает. Первая строка не меняется. |
-| Конституция: «Технические ограничения» называют только ECIES P-256 | Поправка 2.5.0 в отдельном коммите: гибрид P-256 + ML-KEM-768. |
+| `touchid status` prints a second line | The protection status of the store is part of the status. SecretBar does not parse the `touchid status` output. The first line does not change. |
+| Constitution: "Technical constraints" name only ECIES P-256 | Amendment 2.5.0 in a separate commit: hybrid P-256 + ML-KEM-768. |

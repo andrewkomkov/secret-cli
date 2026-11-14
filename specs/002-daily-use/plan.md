@@ -1,27 +1,27 @@
-# Implementation Plan: Удобство каждый день
+# Implementation Plan: Daily convenience
 
 **Branch**: `002-daily-use` | **Date**: 2026-10-02 | **Spec**: [spec.md](spec.md)
 
-## Summary <!-- slop: заголовок задан шаблоном spec-kit -->
+## Summary <!-- slop: the heading comes from the spec-kit template -->
 
-- `copy`: `pbcopy` значения, фоновый `( sleep N; сравнить sha256 буфера; очистить )`.
-  Для тестов `pbcopy`/`pbpaste` заменяются переменными `SECRET_PBCOPY`/`SECRET_PBPASTE`, но
-  только при `SECRET_KEYCHAIN`, который не совпадает с keychain по умолчанию.
-- Кэш имён: функция `refresh_names` пишет вывод `ls` в файл после изменений.
-- `mv`: прочитать значение, комментарий и срок, записать NEW, удалить OLD.
-- Срок: `write_item` всегда передаёт `-G` (атрибут `gena`), значение берётся из записи, если
-  его не меняют. Даты через `date -j -f %Y-%m-%d`.
-- `completions/_secret`: команды, имена из кэша, после `--` в `run` — обычное дополнение команды.
+- `copy`: `pbcopy` of the value, a background `( sleep N; compare the sha256 of the clipboard; clear )`.
+  For tests, `pbcopy`/`pbpaste` are replaced by the variables `SECRET_PBCOPY`/`SECRET_PBPASTE`, but
+  only with a `SECRET_KEYCHAIN` that is not the default keychain.
+- Name cache: the function `refresh_names` writes the output of `ls` to a file after changes.
+- `mv`: read the value, comment and expiry, write NEW, delete OLD.
+- Expiry: `write_item` always passes `-G` (the `gena` attribute). The value comes from the item if
+  it is not changed. Dates go through `date -j -f %Y-%m-%d`.
+- `completions/_secret`: commands, names from the cache, after `--` in `run` — normal command completion.
 
 ## Constitution Check
 
-| Принцип | Как соблюдается |
+| Principle | How it is met |
 |---|---|
-| I | `copy` кладёт значение в буфер и не печатает его; фоновый процесс держит только хэш |
-| III | `pbcopy`, `pbpaste`, `shasum`, `date` — из macOS |
-| IV | тесты используют подмену буфера и временный кэш имён |
-| V | `set` без `-x` сохраняет срок записи, `ls` без флагов выводит то же, что раньше |
+| I | `copy` puts the value into the clipboard and does not print it; the background process keeps only a hash |
+| III | `pbcopy`, `pbpaste`, `shasum`, `date` — from macOS |
+| IV | tests use a replaced clipboard and a temporary name cache |
+| V | `set` without `-x` keeps the expiry of the item, `ls` without flags prints the same as before |
 
 ## Complexity Tracking
 
-Отступлений нет.
+No deviations.

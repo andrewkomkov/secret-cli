@@ -31,4 +31,4 @@
 
 ## Notes
 
-- Спека называет команды `secret`: это интерфейс, который просил владелец.
+- The spec names `secret` commands: this is the interface that the owner asked for.

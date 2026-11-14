@@ -1,16 +1,16 @@
-# Implementation Plan: push формулы tap по SSH deploy key
+# Implementation Plan: push of the tap formula with an SSH deploy key
 
 **Spec**: `specs/028-tap-deploy-key/spec.md`
 
 ## Technical Context
 
-### Джоба `formula` в `release.yml`
+### Job `formula` in `release.yml`
 
-Было: клон по HTTPS с `HOMEBREW_TAP_TOKEN`. Станет: клон по SSH ключом deploy key.
+Before: clone over HTTPS with `HOMEBREW_TAP_TOKEN`. After: clone over SSH with a deploy key.
 
 ```yaml
 env:
-  DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}   # base64 приватного ed25519
+  DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}   # base64 of the private ed25519 key
 steps:
   - name: No key
     if: env.DEPLOY_KEY == ''
@@ -34,32 +34,37 @@ steps:
       git push
 ```
 
-### Провиженинг ключа (из CLI, вне репы)
+### Key provisioning (from the CLI, outside the repo)
 
 1. `ssh-keygen -t ed25519 -N "" -C "homebrew-secret deploy (release.yml)" -f tapkey`.
 2. `gh repo deploy-key add tapkey.pub -R andrewkomkov/homebrew-secret --allow-write --title "release.yml tap push"`.
-3. `base64 < tapkey | secret set -c "<comment>" HOMEBREW_TAP_DEPLOY_KEY` — приватный ключ идёт в
-   хранилище пайпом, без argv. Значение однострочное (base64).
-4. `secret gh HOMEBREW_TAP_DEPLOY_KEY -R andrewkomkov/secret-cli` — владелец подтверждает в окне.
-5. Удалить `tapkey` и `tapkey.pub`.
+3. `base64 < tapkey | secret set -c "<comment>" HOMEBREW_TAP_DEPLOY_KEY` — the private key goes
+   into the store through a pipe, without argv. The value is one line (base64).
+4. `secret gh HOMEBREW_TAP_DEPLOY_KEY -R andrewkomkov/secret-cli` — the owner confirms in the
+   window.
+5. Delete `tapkey` and `tapkey.pub`.
 
-Проверка права записи до релиза: `GIT_SSH_COMMAND` с ключом + `git push` пустого коммита в tap,
-затем откат. Или `ssh -i tapkey -T git@github.com` и клон по SSH.
+Check of the write permission before the release: `GIT_SSH_COMMAND` with the key + `git push` of
+an empty commit to the tap, then a rollback. Or `ssh -i tapkey -T git@github.com` and a clone over
+SSH.
 
 ## Constitution Check
 
-- **I**: приватный ключ идёт в хранилище пайпом, в argv и логи не попадает. base64 держит значение
-  однострочным. `secret gh` отдаёт его только в stdin `gh secret set`.
-- **II**: `secret gh` читает значение — это Touch ID и окно подтверждения отправки. Владелец
-  подтверждает. Запись `secret set` идёт без Touch ID, как обычно.
-- **III**: `ssh-keygen`, `gh`, `base64` есть в системе и уже в зависимостях (`gh` нужен `secret gh`).
-- **IV**: `tests/run.sh` проверяет команду `secret`, а не workflow. Правка `release.yml`
-  проверяется на следующем релизе — ручная проверка с датой в `tasks.md`.
-- **V**: меняется только джоба `formula`. Команды `secret`, формат ссылок и формула не меняются.
+- **I**: the private key goes into the store through a pipe; it does not get into argv or logs.
+  base64 keeps the value on one line. `secret gh` gives it only to the stdin of
+  `gh secret set`.
+- **II**: `secret gh` reads the value — this is Touch ID and the push confirmation window. The
+  owner confirms. The write `secret set` goes without Touch ID, as usual.
+- **III**: `ssh-keygen`, `gh`, `base64` are in the system and already in the dependencies (`gh`
+  is needed for `secret gh`).
+- **IV**: `tests/run.sh` checks the `secret` command, not the workflow. The change of
+  `release.yml` is checked on the next release — a manual check with a date in `tasks.md`.
+- **V**: only the job `formula` changes. The `secret` commands, the reference format and the
+  formula do not change.
 
 ## Complexity Tracking
 
-| Отступление | Причина |
+| Deviation | Reason |
 |---|---|
-| Приватный ключ в base64 | Хранилище держит однострочные значения, а ключ PEM многострочный. base64 — мост. |
-| Смена секрета `HOMEBREW_TAP_TOKEN` → `HOMEBREW_TAP_DEPLOY_KEY` | SSH-ключ вместо токена. Старый секрет всё равно отсутствует. |
+| Private key in base64 | The store keeps one-line values, and a PEM key has many lines. base64 is the bridge. |
+| Change of the secret `HOMEBREW_TAP_TOKEN` → `HOMEBREW_TAP_DEPLOY_KEY` | An SSH key instead of a token. The old secret is missing anyway. |

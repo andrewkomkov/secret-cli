@@ -1,6 +1,6 @@
-# Tasks: Маскировка для агента по умолчанию
+# Tasks: Masking for the agent by default
 
-- [x] T001 [US1] `CLAUDECODE` включает маскировку, `--no-mask` для человека, предупреждение для агента
-- [x] T002 [US2] Варианты base64, URL-safe base64 и URL-кодирования в маскировщике
-- [x] T003 Тесты: без флага под `CLAUDECODE`, `--no-mask` у агента и человека, вывод окружения через `env` и `python3`, base64, URL, короткое значение
-- [x] T004 README, `secret help`, правила в `CLAUDE.md` и `docs/claude-md-secrets.md`
+- [x] T001 [US1] `CLAUDECODE` turns on masking, `--no-mask` for a human, a warning for the agent
+- [x] T002 [US2] base64, URL-safe base64 and URL encoding variants in the masker
+- [x] T003 Tests: no flag under `CLAUDECODE`, `--no-mask` for the agent and for a human, the environment printed through `env` and `python3`, base64, URL, short value
+- [x] T004 README, `secret help`, the rules in `CLAUDE.md` and `docs/claude-md-secrets.md`

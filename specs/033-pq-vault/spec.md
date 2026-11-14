@@ -1,4 +1,4 @@
-# Feature Specification: постквантовая защита хранилища Secure Enclave
+# Feature Specification: post-quantum protection of the Secure Enclave store
 
 **Feature Branch**: `033-pq-vault`
 
@@ -6,80 +6,81 @@
 
 **Status**: Draft 2026-11-11
 
-**Input**: Владелец: «что-то специфичное под macOS 27». Исследование 2026-11-11: CryptoKit с
-macOS 26 даёт `SecureEnclave.MLKEM768`, ключ ML-KEM-768 внутри Secure Enclave.
+**Input**: Owner: "something specific to macOS 27". Research of 2026-11-11: CryptoKit since
+macOS 26 gives `SecureEnclave.MLKEM768`, an ML-KEM-768 key inside the Secure Enclave.
 
-## Цель
+## Goal
 
-Значение в хранилище открывает только ключ P-256 из Secure Enclave. Квантовый компьютер может
-вычислить закрытый ключ P-256 из открытого ключа. Открытый ключ лежит в заголовке файла.
+A value in the store is opened only by the P-256 key from the Secure Enclave. A quantum computer
+can compute the private P-256 key from the public key. The public key is in the file header.
 
-Угроза «сохранить сейчас, расшифровать потом»: злоумышленник копирует файл хранилища и запись
-keychain входа сейчас. Позже квантовый компьютер открывает значения без Touch ID и без этого Mac.
+The threat "store now, decrypt later": an attacker copies the store file and the login keychain
+item now. Later a quantum computer opens the values without Touch ID and without this Mac.
 
-После фичи каждое значение закрыто двумя ключами Secure Enclave: P-256 и ML-KEM-768. Чтобы
-прочитать значение, нужны оба ключа. Квантовый компьютер ломает только P-256, ключ ML-KEM-768 он
-не ломает.
+After the feature, each value is sealed with two Secure Enclave keys: P-256 and ML-KEM-768. To
+read a value, both keys are needed. A quantum computer breaks only P-256; it does not break the
+ML-KEM-768 key.
 
-## Контекст и границы
+## Context and scope
 
-- Только хранилище Secure Enclave. Файловый keychain не меняется.
-- Ключ файла (AES-256-GCM) уже устойчив к квантовой атаке: симметричный 256-битный ключ.
-- Ключ ML-KEM-768 создаёт Secure Enclave с `.userPresence`, как ключ P-256. Одно подтверждение
-  Touch ID открывает оба ключа.
-- Нужна macOS 26 или новее и helper, собранный SDK macOS 26 или новее (Swift 6.2+). Старый helper
-  и старая macOS работают по-старому.
+- Only the Secure Enclave store. The file keychain does not change.
+- The file key (AES-256-GCM) is already resistant to a quantum attack: a symmetric 256-bit key.
+- The Secure Enclave creates the ML-KEM-768 key with `.userPresence`, as the P-256 key. One
+  Touch ID confirmation opens both keys.
+- macOS 26 or later is needed, and a helper built with the macOS 26 SDK or later (Swift 6.2+). An
+  old helper and an old macOS work as before.
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - новое хранилище сразу гибридное (Priority: P1)
+### User Story 1 - a new store is hybrid at once (Priority: P1)
 
-1. **When** helper создаёт новое хранилище на macOS 26+, **Then** helper создаёт оба ключа, и
-   каждое значение закрыто гибридно (формат v2).
-2. **When** человек читает значение, **Then** Touch ID спрашивается один раз, как раньше.
+1. **When** the helper creates a new store on macOS 26+, **Then** the helper creates both keys,
+   and each value is sealed in the hybrid way (format v2).
+2. **When** a person reads a value, **Then** Touch ID is asked once, as before.
 
-### User Story 2 - перевод старого хранилища (Priority: P1)
+### User Story 2 - migration of an old store (Priority: P1)
 
-1. **When** человек выполняет `secret touchid pq`, **Then** helper создаёт ключ ML-KEM-768,
-   спрашивает Touch ID один раз и закрывает каждое старое значение заново в формате v2.
-2. Значения, комментарии, сроки и аренды не меняются. Метка версии значения (`r`) остаётся.
-3. Повторный `secret touchid pq` переводит только оставшиеся значения v1. Если их нет, команда
-   печатает `touchid pq: all N values are post-quantum` и Touch ID не спрашивает.
-4. Пока перевода не было, запись новых значений идёт в формате v1, а чтение работает как раньше.
+1. **When** a person runs `secret touchid pq`, **Then** the helper creates an ML-KEM-768 key,
+   asks for Touch ID once and seals each old value again in format v2.
+2. The values, comments, expiry dates and leases do not change. The value version mark (`r`)
+   stays.
+3. A repeated `secret touchid pq` migrates only the remaining v1 values. If there are none, the
+   command prints `touchid pq: all N values are post-quantum` and does not ask for Touch ID.
+4. Until the migration, new values are written in format v1, and reads work as before.
 
-### User Story 3 - статус (Priority: P2)
+### User Story 3 - status (Priority: P2)
 
-1. `secret touchid status` печатает вторую строку: `post-quantum: on`, `post-quantum: off (secret
-   touchid pq)`, `post-quantum: partial N/M (secret touchid pq)` или `post-quantum: unsupported`.
-2. Статус не спрашивает Touch ID.
+1. `secret touchid status` prints a second line: `post-quantum: on`, `post-quantum: off (secret
+   touchid pq)`, `post-quantum: partial N/M (secret touchid pq)` or `post-quantum: unsupported`.
+2. The status does not ask for Touch ID.
 
 ### Edge Cases
 
-- Helper без поддержки ML-KEM встречает значение v2: ошибка
-  `this helper cannot open post-quantum values: rebuild it on macOS 26 or later`. Значение не
-  меняется.
-- `secret touchid repair` восстанавливает оба ключа из заголовка файла.
-- Агент grace, запущенный до перевода, видит новые ключи в заголовке и перечитывает запись
-  keychain.
-- Ключ ML-KEM без `.userPresence` (запись подменили): ошибка, как для ключа P-256.
+- A helper without ML-KEM support meets a v2 value: the error
+  `this helper cannot open post-quantum values: rebuild it on macOS 26 or later`. The value does
+  not change.
+- `secret touchid repair` restores both keys from the file header.
+- A grace agent started before the migration sees the new keys in the header and reads the
+  keychain item again.
+- An ML-KEM key without `.userPresence` (the item was replaced): an error, as for the P-256 key.
 
 ## Requirements
 
-- **FR-001**: формат v2 значения: байт `0x02`, шифротекст ML-KEM-768 (1088 байт), открытый ключ
-  P-256 эфемерного ключа (65 байт), AES-GCM. Ключ AES — HKDF-SHA256 от `ecdh || mlkem` с солью
-  `eph || ct` и info `secret-cli vault v2|NAME`.
-- **FR-002**: значение v1 начинается с `0x04` (x963). helper читает оба формата.
-- **FR-003**: запись keychain и заголовок файла хранят открытый ключ ML-KEM и обёртку ключа
-  Secure Enclave. Старые записи без этих полей читаются.
-- **FR-004**: `secret touchid pq` — новая подкоманда. Без хранилища Secure Enclave она завершается
-  с ошибкой.
-- **FR-005**: тестовая сборка держит программный ключ ML-KEM. `SECRET_TEST_NO_PQ=1` создаёт
-  хранилище v1 для теста перевода.
+- **FR-001**: format v2 of a value: byte `0x02`, ML-KEM-768 ciphertext (1088 bytes), the P-256
+  public key of the ephemeral key (65 bytes), AES-GCM. The AES key is HKDF-SHA256 of
+  `ecdh || mlkem` with the salt `eph || ct` and the info `secret-cli vault v2|NAME`.
+- **FR-002**: a v1 value starts with `0x04` (x963). The helper reads both formats.
+- **FR-003**: the keychain item and the file header keep the ML-KEM public key and the wrapped
+  Secure Enclave key. Old items without these fields are readable.
+- **FR-004**: `secret touchid pq` is a new subcommand. Without the Secure Enclave store, it fails
+  with an error.
+- **FR-005**: the test build keeps a software ML-KEM key. `SECRET_TEST_NO_PQ=1` creates a v1 store
+  for the migration test.
 
 ## Success Criteria
 
-- **SC-001**: тесты: новое хранилище даёт значения v2; перевод v1 → v2 сохраняет значения,
-  комментарии, сроки и аренду; повторный перевод ничего не делает; статус верный.
-- **SC-002**: CI на `macos-15` (без ML-KEM) зелёный: тесты PQ там пропускаются.
-- **SC-003**: ручная проверка на Mac владельца: `secret touchid pq` — одно окно Touch ID, затем
-  `secret run` работает, статус `post-quantum: on`.
+- **SC-001**: tests: a new store gives v2 values; the migration v1 → v2 keeps the values,
+  comments, expiry dates and the lease; a repeated migration does nothing; the status is correct.
+- **SC-002**: CI on `macos-15` (without ML-KEM) is green: the PQ tests are skipped there.
+- **SC-003**: manual check on the owner's Mac: `secret touchid pq` — one Touch ID window, then
+  `secret run` works, status `post-quantum: on`.

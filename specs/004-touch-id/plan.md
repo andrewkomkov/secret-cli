@@ -2,30 +2,30 @@
 
 **Branch**: `004-touch-id` | **Date**: 2026-10-02 | **Spec**: [spec.md](spec.md)
 
-## Summary <!-- slop: заголовок задан шаблоном spec-kit -->
+## Summary <!-- slop: the heading comes from the spec-kit template -->
 
-Helper на Swift, две команды: `auth` и `status`. `bin/secret` находит его в `build/` рядом с
-собой (через symlink). `require_auth` вызывается в `get`, `copy`, `run` (после чтения ссылок, до
-запуска команды) и `export`. Причина в окне — операция и имена секретов. Подмены для тестов
-разрешены, только если inode keychain (`stat -L -f %d:%i`) не совпадает с keychain по умолчанию.
+A helper in Swift with two commands: `auth` and `status`. `bin/secret` finds it in `build/` next to
+itself (through the symlink). `require_auth` is called in `get`, `copy`, `run` (after the references are read, before
+the command starts) and `export`. The reason in the dialog is the operation and the secret names. Test replacements
+are allowed only if the inode of the keychain (`stat -L -f %d:%i`) differs from the default keychain.
 
 ## Technical Context
 
 **Language and version**: Swift 5 mode (`swiftc -swift-version 5`), bash 3.2
 
-**Primary Dependencies**: LocalAuthentication, Security (`SecKeychainGetStatus` устарел, но работает в macOS 27)
+**Primary Dependencies**: LocalAuthentication, Security (`SecKeychainGetStatus` is deprecated, but works in macOS 27)
 
 ## Constitution Check
 
-| Принцип | Как соблюдается |
+| Principle | How it is met |
 |---|---|
-| II | подтверждение делает человек; выключение тоже требует подтверждения |
-| III | helper — исходник в репе, сборка `swiftc` из Command Line Tools |
-| IV | заглушка helper в тестах; настоящий Touch ID — ручная проверка |
-| V | по умолчанию `touchid off`, команды работают как раньше |
+| II | a human gives the confirmation; turning it off also needs a confirmation |
+| III | the helper is source code in the repo, built with `swiftc` from Command Line Tools |
+| IV | a helper stub in tests; real Touch ID is a manual check |
+| V | the default is `touchid off`, the commands work as before |
 
 ## Complexity Tracking
 
-| Отступление | Причина |
+| Deviation | Reason |
 |---|---|
-| При `touchid on` без helper команда не работает (принцип III говорит, что без helper команда работает без его возможностей) | иначе удаление `build/secret-auth` выключало бы Touch ID без подтверждения. При `touchid off` команда без helper работает |
+| With `touchid on` and no helper, the command does not work (principle III says that without the helper the command works without its features) | otherwise deleting `build/secret-auth` would turn off Touch ID without a confirmation. With `touchid off`, the command works without the helper |

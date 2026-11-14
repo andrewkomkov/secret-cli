@@ -1,108 +1,117 @@
-# Feature Specification: session-only cookie через расширение Safari и cookie-jar
+# Feature Specification: session-only cookies through a Safari extension and a cookie jar
 
-**Feature Branch**: `030-cookie-login-jar`. Работа идёт в `main`.
+**Feature Branch**: `030-cookie-login-jar`. The work goes on in `main`.
 
 **Created**: 2026-11-04
 
-**Status**: Draft 2026-11-04 (вариант B — расширение Safari; вариант A с окном WKWebView отклонён)
+**Status**: Draft 2026-11-04 (option B — Safari extension; option A with a WKWebView window is rejected)
 
-**Input**: Запрос соседней сессии (случай 2026-11-04): кабинет portal.example.org (ASP.NET WebForms)
-держит сессию на `ASP.NET_SessionId` — HttpOnly session cookie без срока. Safari его в
-`Cookies.binarycookies` не пишет, через `document.cookie` его читать нельзя (HttpOnly). `secret
-cookie pull` берёт только постоянные cookie, и запрос к `MainPage.aspx` даёт 302 на `Login.aspx`.
-Владелец выбрал B: читать cookie из **настоящей** сессии Safari, без второго окна и без повторного
-входа.
+**Input**: Request from a neighbouring session (case of 2026-11-04): the portal.example.org
+account (ASP.NET WebForms) keeps the session in `ASP.NET_SessionId`, an HttpOnly session cookie
+without an expiry. Safari does not write it to `Cookies.binarycookies`, and it cannot be read
+through `document.cookie` (HttpOnly). `secret cookie pull` takes only persistent cookies, and a
+request to `MainPage.aspx` gives 302 to `Login.aspx`. The owner chose B: read the cookies from
+the **real** Safari session, without a second window and without a second login.
 
-## Цель
+## Goal
 
-Агент получает рабочую сессию сайта из уже открытой в Safari вкладки: без логина в чате, без пароля,
-без показа значений. Вход, пароль и SMS раньше выполнил сам человек в своей Safari.
+The agent gets a working site session from a tab that is already open in Safari: without a login
+in the chat, without a password, without showing values. The person did the login, the password
+and the SMS earlier in their own Safari.
 
-## Контекст и границы
+## Context and scope
 
-- Session-only и HttpOnly cookie живут в памяти Safari. Их читает только тот, кто внутри Safari.
-  Это расширение Safari с правом `cookies`.
-- Правило репозитория «без платного аккаунта и без entitlements» закрывает app groups. Поэтому
-  `SafariWebExtensionHandler` из песочницы в хранилище писать не может. Мост идёт через loopback:
-  **расширение → 127.0.0.1 (сервер SecretBar) → SecretBar → `secret cookie import`**.
-- Ручные шаги делает человек: включает расширение в Safari, даёт доступ к cookie по сайтам, один
-  раз вставляет токен спарки из SecretBar в настройки расширения.
-- Переиспользуется из общей инфраструктуры: формат jar, хранение jar в секрете (base64), `secret
-  run --cookie-jar`, маска по каждому cookie, hook на jar-файл, `cookie ls --jar`, `cookie pull
-  --all`.
-- Вне рамок: Chrome и Arc (значения зашифрованы Chrome Safe Storage), обход капчи и 2FA (их всегда
-  проходит человек).
+- Session-only and HttpOnly cookies live in the Safari memory. Only code inside Safari reads
+  them. This is a Safari extension with the permission `cookies`.
+- The repository rule "no paid account and no entitlements" closes app groups. So
+  `SafariWebExtensionHandler` cannot write from the sandbox into the store. The bridge goes over
+  loopback: **extension → 127.0.0.1 (SecretBar server) → SecretBar → `secret cookie import`**.
+- A person does the manual steps: turns on the extension in Safari, gives cookie access per
+  site, pastes the pairing token from SecretBar into the extension settings once.
+- Reused from the common infrastructure: the jar format, the storage of the jar in a secret
+  (base64), `secret run --cookie-jar`, the mask per cookie, the hook on the jar file,
+  `cookie ls --jar`, `cookie pull --all`.
+- Out of scope: Chrome and Arc (the values are encrypted with Chrome Safe Storage), going around
+  a captcha and 2FA (a person always passes them).
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - захват сессии из Safari (Priority: P1)
+### User Story 1 - capture of the session from Safari (Priority: P1)
 
-1. **When** человек на нужной вкладке Safari нажимает кнопку расширения, **Then** расширение читает
-   cookie домена вкладки (включая HttpOnly и session), собирает Netscape jar и шлёт его на loopback
-   SecretBar с токеном спарки.
-2. **When** SecretBar принял jar с верным токеном, **Then** он зовёт `secret cookie import --as
-   NAME` и сохраняет jar как один секрет (base64). Имя берётся из запроса расширения.
-3. **When** токен неверный или запрос не с loopback, **Then** SecretBar отклоняет запрос и cookie
-   не сохраняет.
-4. Значения не идут ни в stdout, ни в лог. `secret log` фиксирует запись. Запись требует
-   подтверждения, как `set`.
+1. **When** a person on the needed Safari tab clicks the extension button, **Then** the extension
+   reads the cookies of the tab domain (HttpOnly and session included), builds a Netscape jar and
+   sends it to the SecretBar loopback with the pairing token.
+2. **When** SecretBar accepted the jar with a correct token, **Then** it calls `secret cookie
+   import --as NAME` and saves the jar as one secret (base64). The name comes from the extension
+   request.
+3. **When** the token is wrong or the request is not from loopback, **Then** SecretBar rejects
+   the request and does not save the cookies.
+4. The values go neither to stdout nor to the log. `secret log` records the write. The write
+   requires confirmation, as `set` does.
 
-### User Story 2 - запуск команды с jar (Priority: P1)
+### User Story 2 - run of a command with a jar (Priority: P1)
 
-1. **When** человек выполняет `secret run --cookie-jar NAME -- cmd`, **Then** команда пишет jar во
-   временный файл 0600, путь — в `$SECRET_COOKIE_JAR`. Пример:
+1. **When** a person runs `secret run --cookie-jar NAME -- cmd`, **Then** the command writes the
+   jar to a temporary file 0600, and the path goes to `$SECRET_COOKIE_JAR`. Example:
    `curl -b "$SECRET_COOKIE_JAR" -c "$SECRET_COOKIE_JAR"`.
-2. **When** `cmd` завершена, **Then** команда удаляет файл, в том числе по trap на сигналы.
-3. **When** задан `--update`, **Then** после `cmd` команда сохраняет изменённый jar обратно в секрет.
-4. Маска покрывает значение каждого cookie из jar. Подтверждение имён — одним запросом Touch ID.
+2. **When** `cmd` has finished, **Then** the command deletes the file, also by a trap on signals.
+3. **When** `--update` is given, **Then** after `cmd` the command saves the changed jar back into
+   the secret.
+4. The mask covers the value of each cookie from the jar. Confirmation of the names is one Touch
+   ID request.
 
-### User Story 3 - осмотр и постоянные cookie (Priority: P2)
+### User Story 3 - inspection and persistent cookies (Priority: P2)
 
-1. **When** человек выполняет `secret cookie ls --jar NAME`, **Then** команда печатает имена,
-   домены, флаги и expiry cookie внутри jar, без значений.
-2. **When** человек выполняет `secret cookie pull DOMAIN --all --as NAME`, **Then** команда собирает
-   постоянные cookie домена из файлов Safari (все профили, 029) в один jar. Это путь, когда сессия
-   всё-таки персистентная.
-3. **When** `pull` или `import` видят типовые session-имена (`ASP.NET_SessionId`, `.ASPXAUTH`,
-   `JSESSIONID`, `PHPSESSID`), а на диске их нет, **Then** команда печатает подсказку про расширение.
+1. **When** a person runs `secret cookie ls --jar NAME`, **Then** the command prints the names,
+   domains, flags and expiry of the cookies inside the jar, without values.
+2. **When** a person runs `secret cookie pull DOMAIN --all --as NAME`, **Then** the command
+   collects the persistent cookies of the domain from the Safari files (all profiles, 029) into
+   one jar. This is the path when the session is persistent after all.
+3. **When** `pull` or `import` see typical session names (`ASP.NET_SessionId`, `.ASPXAUTH`,
+   `JSESSIONID`, `PHPSESSID`) and they are not on disk, **Then** the command prints a hint about
+   the extension.
 
 ## Requirements *(mandatory)*
 
-- **FR-001**: расширение Safari (Web Extension) с правом `cookies` читает cookie активного домена,
-  собирает Netscape jar. Таргет Xcode в составе SecretBar. Подпись — как у SecretBar.
-- **FR-002**: SecretBar держит loopback-сервер на `127.0.0.1` со случайным портом и токеном спарки.
-  Принимает jar только с верным токеном и только с loopback. Токен человек берёт в SecretBar и
-  вставляет в настройки расширения.
-- **FR-003**: `secret cookie import --as NAME` читает jar из stdin, кодирует base64, сохраняет как
-  секрет. SecretBar зовёт её. Комментарий `cookie jar DOMAIN via safari extension, N cookies,
-  session-only: a,b`. Срок — минимум expiry среди постоянных cookie; все session-only → без срока,
-  в комментарии `session`.
-- **FR-004**: формат jar — Netscape cookie-jar (как у curl, HttpOnly с префиксом `#HttpOnly_`).
-- **FR-005**: в секрете jar лежит в base64 (значение однострочное).
-- **FR-006**: `secret run --cookie-jar NAME [--update]` пишет jar во временный файл 0600, путь — в
-  `$SECRET_COOKIE_JAR`, удаляет файл после `cmd` и по trap; `--update` сохраняет изменённый jar.
-- **FR-007**: маска покрывает значение каждого cookie из jar по отдельности.
-- **FR-008**: `secret cookie ls --jar NAME` печатает метаданные cookie без значений.
-- **FR-009**: `secret cookie pull DOMAIN --all --as NAME` собирает постоянные cookie домена в jar.
-- **FR-010**: подсказка про расширение при типовых session-именах без файла на диске.
-- **FR-011**: hook `hooks/claude-pretooluse.sh` блокирует чтение `$SECRET_COOKIE_JAR` и путей
-  jar-файлов командами `cat`/`head`/`tail`/`less`/`cp` внутри `secret run`.
+- **FR-001**: a Safari extension (Web Extension) with the permission `cookies` reads the cookies
+  of the active domain and builds a Netscape jar. An Xcode target as part of SecretBar. The
+  signature is the same as for SecretBar.
+- **FR-002**: SecretBar keeps a loopback server on `127.0.0.1` with a random port and a pairing
+  token. It accepts a jar only with a correct token and only from loopback. The person takes the
+  token in SecretBar and pastes it into the extension settings.
+- **FR-003**: `secret cookie import --as NAME` reads a jar from stdin, encodes it in base64 and
+  saves it as a secret. SecretBar calls it. Comment `cookie jar DOMAIN via safari extension, N
+  cookies, session-only: a,b`. The expiry is the minimum expiry among the persistent cookies; all
+  session-only → no expiry, `session` in the comment.
+- **FR-004**: the jar format is the Netscape cookie jar (as in curl, HttpOnly with the prefix
+  `#HttpOnly_`).
+- **FR-005**: in the secret, the jar is in base64 (the value is one line).
+- **FR-006**: `secret run --cookie-jar NAME [--update]` writes the jar to a temporary file 0600,
+  the path to `$SECRET_COOKIE_JAR`, deletes the file after `cmd` and by a trap; `--update` saves
+  the changed jar.
+- **FR-007**: the mask covers the value of each cookie from the jar separately.
+- **FR-008**: `secret cookie ls --jar NAME` prints the cookie metadata without values.
+- **FR-009**: `secret cookie pull DOMAIN --all --as NAME` collects the persistent cookies of the
+  domain into a jar.
+- **FR-010**: a hint about the extension for typical session names without a file on disk.
+- **FR-011**: the hook `hooks/claude-pretooluse.sh` blocks reads of `$SECRET_COOKIE_JAR` and of
+  jar file paths with the commands `cat`/`head`/`tail`/`less`/`cp` inside `secret run`.
 
-### Сопутствующий фикс маски коротких значений
+### Related fix of the mask for short values
 
-- **FR-012**: `--mask` не маскирует значения короче 4 символов (или из одних цифр длиной ≤3).
-  Один раз печатает в stderr `mask skipped for short value NAME`. Причина — `isEmp=0` превращал
-  `302` из `curl -w "%{http_code}"` в `3***2`.
+- **FR-012**: `--mask` does not mask values shorter than 4 characters (or only digits with a
+  length ≤3). It prints `mask skipped for short value NAME` to stderr once. The reason: `isEmp=0`
+  turned `302` from `curl -w "%{http_code}"` into `3***2`.
 
 ## Success Criteria *(mandatory)*
 
-- **SC-001**: на вкладке portal.example.org кнопка расширения сохраняет jar с `ASP.NET_SessionId`
-  через SecretBar и `secret cookie import`.
+- **SC-001**: on the portal.example.org tab, the extension button saves a jar with
+  `ASP.NET_SessionId` through SecretBar and `secret cookie import`.
 - **SC-002**: `secret run --mask --cookie-jar TAX_SESSION --update -- curl -s -o /dev/null -w
   '%{http_code}' -b "$SECRET_COOKIE_JAR" -c "$SECRET_COOKIE_JAR"
-  https://portal.example.org/MainPage.aspx` даёт `200`, а не 302.
-- **SC-003**: ни одна команда не печатает значения. Тесты покрывают формат jar, round-trip
-  `--update`, маску по cookie, правило коротких значений, hook и протокол `import` (без живого
-  расширения).
-- **SC-004**: `docs/claude-md-secrets.md`, раздел «How to import a browser session», описывает
-  расширение, `import`, `--cookie-jar` и выбор между `pull` и расширением.
+  https://portal.example.org/MainPage.aspx` gives `200`, not 302.
+- **SC-003**: no command prints values. The tests cover the jar format, the `--update` round
+  trip, the mask per cookie, the short value rule, the hook and the `import` protocol (without a
+  live extension).
+- **SC-004**: `docs/claude-md-secrets.md`, section "How to import a browser session", describes
+  the extension, `import`, `--cookie-jar` and the choice between `pull` and the extension.

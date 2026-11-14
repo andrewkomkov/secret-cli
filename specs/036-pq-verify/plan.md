@@ -1,21 +1,21 @@
-# Implementation Plan: `touchid pq` проверяет значения до записи
+# Implementation Plan: `touchid pq` checks the values before the write
 
 **Spec**: `specs/036-pq-verify/spec.md`
 
 ## Technical Context
 
-- `helper/store/main.swift`, `upgradePQ`: цикл `unseal` с контекстом `c` после `seal`, до
-  `writeFile`. Ошибка — `VaultError.damaged`, `withStoreLock` выходит без записи.
-- Цена: второе чтение каждого значения в Secure Enclave. Touch ID не спрашивается: контекст уже
-  подтверждён.
+- `helper/store/main.swift`, `upgradePQ`: a loop of `unseal` with the context `c` after `seal`,
+  before `writeFile`. An error is `VaultError.damaged`; `withStoreLock` exits without a write.
+- Cost: a second read of each value in the Secure Enclave. Touch ID is not asked: the context is
+  already confirmed.
 
 ## Constitution Check
 
-- **I**: значения остаются в памяти helper.
-- **II**: вопрос Touch ID один, как в 033.
-- **IV**: тесты 033 проходят через новую проверку.
-- **V**: поведение при успехе не меняется.
+- **I**: the values stay in the helper memory.
+- **II**: one Touch ID question, as in 033.
+- **IV**: the 033 tests pass through the new check.
+- **V**: the behaviour on success does not change.
 
 ## Complexity Tracking
 
-Нет отступлений.
+No deviations.

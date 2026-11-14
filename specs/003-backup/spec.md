@@ -1,57 +1,57 @@
-# Feature Specification: Шифрованный бэкап
+# Feature Specification: Encrypted backup
 
-**Feature Branch**: `003-backup` (работа идёт в `main` локальной репы)
+**Feature Branch**: `003-backup` (the work is done in `main` of the local repo)
 
 **Created**: 2026-10-02
 
-**Status**: In progress — всё, кроме ручной проверки с окном (T004), сделано 2026-10-02
+**Status**: In progress — everything except the manual check with the dialog (T004) was done on 2026-10-02
 
-**Input**: Владелец хочет сохранить все секреты в один файл под отдельным паролем и
-восстановить их на другом Mac или после потери keychain.
+**Input**: The owner wants to save all secrets to one file under a separate password and
+restore them on another Mac or after the keychain is lost.
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Сохранить все секреты в файл (Priority: P1)
+### User Story 1 - Save all secrets to a file (Priority: P1)
 
 **Acceptance Scenarios**:
 
-1. **When** `secret export FILE`, **Then** команда спрашивает пароль бэкапа два раза (скрытый
-   ввод), пишет FILE с правами 600, выводит `exported: N secrets to FILE`.
-2. **Then** в FILE нет ни одного значения, имени или комментария открытым текстом.
-3. **Given** FILE есть, **Then** ошибка; с `-f` FILE заменяется.
-4. **Given** пароль короче 12 символов, **Then** ошибка.
+1. **When** `secret export FILE`, **Then** the command asks for the backup password two times (hidden
+   input), writes FILE with mode 600, prints `exported: N secrets to FILE`.
+2. **Then** FILE has no value, name or comment in plain text at all.
+3. **Given** FILE exists, **Then** an error; with `-f` FILE is replaced.
+4. **Given** the password is shorter than 12 characters, **Then** an error.
 
-### User Story 2 - Восстановить из файла (Priority: P1)
+### User Story 2 - Restore from a file (Priority: P1)
 
 **Acceptance Scenarios**:
 
-1. **When** `secret restore FILE` на пустом keychain, **Then** все секреты со значениями,
-   комментариями и сроками на месте, вывод `restored: N, skipped: 0`.
-2. **Given** секрет с таким именем есть, **Then** он пропускается; с `-f` заменяется.
-3. **Given** неверный пароль или испорченный файл, **Then** ошибка, keychain не меняется.
+1. **When** `secret restore FILE` on an empty keychain, **Then** all secrets are in place with their values,
+   comments and expiry dates, the output is `restored: N, skipped: 0`.
+2. **Given** a secret with this name exists, **Then** it is skipped; with `-f` it is replaced.
+3. **Given** a wrong password or a damaged file, **Then** an error, the keychain does not change.
 
 ### Edge Cases
 
-- Пустой keychain: `export` пишет файл с 0 секретов.
-- Пароль бэкапа и значения не попадают на диск в открытом виде: ни во временные файлы, ни в аргументы процессов.
+- Empty keychain: `export` writes a file with 0 secrets.
+- The backup password and the values do not get to the disk in plain form: neither into temporary files nor into process arguments.
 
 ## Requirements *(mandatory)*
 
 - **FR-001**: `secret export [-f] [--pass-stdin] FILE`, `secret restore [-f] [--pass-stdin] FILE`.
-- **FR-002**: Шифрование `openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt` (LibreSSL из macOS).
-- **FR-003**: Внутри файла — заголовок `secret-cli-export 1`, строки `hex(имя) hex(значение) hex(комментарий) hex(срок)` и контрольная сумма sha256 строк. `restore` проверяет заголовок и сумму до первой записи в keychain.
-- **FR-004**: Пароль бэкапа передаётся `openssl` через файловый дескриптор (`-pass fd:3`), не через аргумент и не через переменную окружения.
-- **FR-005**: `--pass-stdin` читает пароль из первой строки stdin: для тестов и автоматизации.
-- **FR-006**: `export` и `restore` пишут строку в журнал доступа (без имён: только число секретов).
+- **FR-002**: Encryption `openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt` (LibreSSL from macOS).
+- **FR-003**: Inside the file — the header `secret-cli-export 1`, the lines `hex(name) hex(value) hex(comment) hex(expiry)` and a sha256 checksum of the lines. `restore` checks the header and the checksum before the first write to the keychain.
+- **FR-004**: The backup password goes to `openssl` through a file descriptor (`-pass fd:3`), not through an argument and not through an environment variable.
+- **FR-005**: `--pass-stdin` reads the password from the first line of stdin: for tests and automation.
+- **FR-006**: `export` and `restore` write a line to the access log (no names: only the number of secrets).
 
 ## Success Criteria *(mandatory)*
 
-- **SC-001**: export → restore в новый keychain даёт те же имена, значения, комментарии и сроки (тест).
-- **SC-002**: `grep` любого значения, имени и комментария по файлу бэкапа пуст (тест).
-- **SC-003**: `tests/run.sh` проходит целиком.
+- **SC-001**: export → restore into a new keychain gives the same names, values, comments and expiry dates (test).
+- **SC-002**: `grep` of any value, name and comment in the backup file is empty (test).
+- **SC-003**: `tests/run.sh` passes in full.
 
 ## Assumptions
 
-- `openssl enc` не даёт аутентифицированного шифрования. Целостность проверяет sha256 внутри
-  зашифрованных данных: неверный пароль или изменённый файл дают ошибку.
-- Пароль бэкапа владелец хранит отдельно от бэкапа (не в этом же keychain).
+- `openssl enc` does not give authenticated encryption. Integrity is checked by a sha256 inside
+  the encrypted data: a wrong password or a changed file gives an error.
+- The owner keeps the backup password apart from the backup (not in the same keychain).

@@ -1,95 +1,97 @@
-# Feature Specification: Скользящий grace
+# Feature Specification: Sliding grace
 
-**Feature Branch**: `010-sliding-grace`. Работа идёт в `main` локальной репы.
+**Feature Branch**: `010-sliding-grace`. The work is done in `main` of the local repository.
 
 **Created**: 2026-10-07
 
 **Status**: Draft
 
-**Input**: В хранилище data protection grace длится 300 секунд от Touch ID. Агент вызывает
-`secret run` реже, чем раз в 5 минут. Поэтому владелец видит окно Touch ID почти на каждый
-запрос. Владелец выбрал скользящий grace (2026-10-07).
+**Input**: In the data protection store, grace lasts 300 seconds from Touch ID. The agent calls
+`secret run` less often than once in 5 minutes. Because of this, the owner sees the Touch ID
+window for almost each request. The owner chose a sliding grace (2026-10-07).
 
 ## User Scenarios & Testing *(mandatory)*
 
-<!-- утр-100: 8.2 — заголовок задан шаблоном spec-kit -->
-### User Story 1 - Вопрос только после простоя (Priority: P1)
+<!-- ste: E8.2 — the spec-kit template sets this heading -->
+### User Story 1 - A question only after idle time (Priority: P1)
 
-**Why this priority**: это цель фичи.
+**Why this priority**: this is the goal of the feature.
 
-**Independent Test**: тестовая сборка, простой 2 секунды. Запросы каждую секунду в течение
-5 секунд дают один ответ Touch ID. Запрос после 3 секунд без запросов даёт новый вопрос.
-
-**Acceptance Scenarios**:
-
-1. **Given** простой N секунд, **When** между запросами меньше N секунд, **Then** Touch ID
-   нужен только первому запросу.
-2. **When** N секунд прошло без запросов, **Then** следующий запрос спрашивает Touch ID.
-3. **Given** первый Touch ID был 8 часов назад, **When** запрос, **Then** нужен новый Touch ID.
-   Перерывы между запросами на это не влияют.
-
-<!-- утр-100: 8.2 — заголовок задан шаблоном spec-kit -->
-### User Story 2 - Конец grace при блокировке экрана и сне (Priority: P1)
-
-**Why this priority**: скользящий grace может длиться часами. Блокировка экрана значит, что
-владельца нет у Mac.
-
-**Independent Test**: тестовая сборка. После сигнала блокировки следующий запрос спрашивает
-Touch ID.
+**Independent Test**: test build, idle time 2 seconds. Requests each second for 5 seconds give
+one Touch ID answer. A request after 3 seconds without requests gives a new question.
 
 **Acceptance Scenarios**:
 
-1. **When** владелец блокирует экран Mac, **Then** агент сразу заканчивает grace.
-2. **When** Mac уходит в сон, **Then** агент сразу заканчивает grace.
-3. **When** `secret lock`, **Then** агент сразу заканчивает grace, как раньше.
+1. **Given** idle time N seconds, **When** the time between requests is less than N seconds,
+   **Then** only the first request needs Touch ID.
+2. **When** N seconds go by without requests, **Then** the next request asks for Touch ID.
+3. **Given** the first Touch ID was 8 hours ago, **When** a request comes, **Then** a new
+   Touch ID is necessary. The breaks between requests have no effect on this.
 
-<!-- утр-100: 8.2 — заголовок задан шаблоном spec-kit -->
-### User Story 3 - Настройка и статус (Priority: P2)
+<!-- ste: E8.2 — the spec-kit template sets this heading -->
+### User Story 2 - End of grace on screen lock and sleep (Priority: P1)
+
+**Why this priority**: a sliding grace can last for hours. A locked screen means that the owner
+is not at the Mac.
+
+**Independent Test**: test build. After the lock signal, the next request asks for Touch ID.
 
 **Acceptance Scenarios**:
 
-1. **When** `secret touchid grace N`, **Then** после Touch ID простой равен N. N больше 3600 —
-   ошибка.
-2. **When** `secret touchid status`, **Then** команда показывает простой, предел 8 часов и
-   состояние grace: активен до какого времени или нет.
-3. **Given** политика `grace=300` из фичи 009, **Then** команда читает её как простой 300.
+1. **When** the owner locks the Mac screen, **Then** the agent ends grace immediately.
+2. **When** the Mac goes to sleep, **Then** the agent ends grace immediately.
+3. **When** `secret lock` runs, **Then** the agent ends grace immediately, as before.
+
+<!-- ste: E8.2 — the spec-kit template sets this heading -->
+### User Story 3 - Setting and status (Priority: P2)
+
+**Acceptance Scenarios**:
+
+1. **When** `secret touchid grace N` runs, **Then** after Touch ID the idle time is N. N more
+   than 3600 is an error.
+2. **When** `secret touchid status` runs, **Then** the command shows the idle time, the 8-hour
+   limit and the grace state: active until which time, or not active.
+3. **Given** the policy `grace=300` from feature 009, **Then** the command reads it as idle
+   time 300.
 
 ### Edge Cases
 
-- Новое хранилище без политики: простой 0, Touch ID на каждую команду.
-- Агент упал: следующий запрос спрашивает Touch ID.
-- Часы Mac перевели: предел 8 часов считается по монотонным часам процесса.
+- A new store without a policy: idle time 0, Touch ID for each command.
+- The agent crashed: the next request asks for Touch ID.
+- The Mac clock was changed: the 8-hour limit is counted by the monotonic clock of the process.
 
 ## Requirements *(mandatory)*
 
-<!-- утр-100: 1.9 — идентификаторы требований заданы шаблоном spec-kit -->
+<!-- ste: E1.9 — the spec-kit template sets the requirement IDs -->
 ### Functional Requirements
 
-- **FR-001**: Агент после каждого обслуженного запроса ставит конец grace: сейчас плюс простой.
-  Конец grace не позже 8 часов от Touch ID.
-- **FR-002**: Агент завершается при блокировке экрана и при сне Mac.
-- **FR-003**: Вид политики прежний: `grace=N`. Теперь N — это простой.
-- **FR-004**: Новая политика по умолчанию: простой 1800 секунд.
-- **FR-005**: `touchid status` показывает простой, предел и состояние grace. Touch ID для этого
-  не нужен.
-- **FR-006**: Тестовая сборка: предел из переменной окружения, сигнал блокировки — команда
-  тестовой сборки. В рабочей сборке этого кода нет.
+- **FR-001**: After each served request, the agent sets the end of grace: now plus the idle
+  time. The end of grace is not later than 8 hours from Touch ID.
+- **FR-002**: The agent stops on screen lock and on Mac sleep.
+- **FR-003**: The policy format stays the same: `grace=N`. Now N is the idle time.
+- **FR-004**: The new default policy: idle time 1800 seconds.
+- **FR-005**: `touchid status` shows the idle time, the limit and the grace state. This does not
+  need Touch ID.
+- **FR-006**: Test build: the limit comes from an environment variable, the lock signal is a
+  command of the test build. The release build does not have this code.
 
 ### Key Entities
 
-- **Политика**: простой в секундах.
-- **Агент**: время Touch ID, конец grace.
+- **Policy**: the idle time in seconds.
+- **Agent**: the time of Touch ID, the end of grace.
 
 ## Success Criteria *(mandatory)*
 
-<!-- утр-100: 1.9 — идентификаторы критериев заданы шаблоном spec-kit -->
-- **SC-001**: Тест: запросы чаще простоя дают один вопрос Touch ID. Простой даёт новый вопрос.
-- **SC-002**: Тест: предел даёт новый вопрос при непрерывных запросах.
-- **SC-003**: Тест: сигнал блокировки даёт новый вопрос.
-- **SC-004**: Ручная проверка: блокировка экрана владельцем заканчивает grace.
+<!-- ste: E1.9 — the spec-kit template sets the criteria IDs -->
+- **SC-001**: Test: requests more frequent than the idle time give one Touch ID question. Idle
+  time gives a new question.
+- **SC-002**: Test: the limit gives a new question during continuous requests.
+- **SC-003**: Test: the lock signal gives a new question.
+- **SC-004**: Manual check: a screen lock by the owner ends grace.
 
 ## Assumptions
 
-- В grace агент отвечает любому процессу владельца, как в фиче 009. Скользящий grace удлиняет это
-  время. Блокировка экрана, сон и предел 8 часов его ограничивают.
-- Владелец сам меняет простой командой `secret touchid grace N`: агенту хук это не даёт.
+- During grace, the agent answers any process of the owner, as in feature 009. A sliding grace
+  makes this time longer. Screen lock, sleep and the 8-hour limit restrict it.
+- Only the owner changes the idle time with `secret touchid grace N`: the hook does not let the
+  agent do it.

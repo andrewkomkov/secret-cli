@@ -1,4 +1,4 @@
-# Implementation Plan: поиск секрета по смыслу моделью на устройстве
+# Implementation Plan: search for a secret by meaning with the on-device model
 
 **Spec**: `specs/034-fm-ask/spec.md`
 
@@ -6,46 +6,47 @@
 
 ### bin/secret, `cmd_ls`
 
-- Новый разбор флага `--ask QUERY` (вместе с `-l`).
-- Список: тот же путь, что `ls -l` (имя, срок, комментарий), без значений и без Touch ID.
-- Путь к `fm`: `test_override SECRET_FM /usr/bin/fm`. Тестовая подмена работает только с
-  тестовым keychain, как другие `SECRET_*` подмены.
-- Проверки до вызова: `fm` есть и исполняемый, иначе код 2 и совет `secret ls -l | grep -i WORD`.
-- Части по 40 строк. Для каждой части:
-  - схема JSON во временный файл (mode 600, `mktemp`, `trap` удаляет): объект с массивом `names`,
-    `items.enum` — имена части;
-  - текст в stdin `fm respond -m system -g --no-stream --schema FILE -i INSTRUCTIONS`:
-    строки `NAME: comment` и строка `Query: QUERY`;
-  - ответ — JSON. Имена из ответа берёт `perl` (JSON::PP есть в системном perl). Команда оставляет
-    только имена из части.
-- Ошибка `fm` (лицензия, Apple Intelligence выключен, модель недоступна): первая строка stderr
-  `fm` без цветов, код 2 и совет.
-- `-l`: для найденных имён печатает строки `ls -l` в порядке ответа.
-- Код 1, если ничего не найдено.
+- New parse of the flag `--ask QUERY` (together with `-l`).
+- List: the same path as `ls -l` (name, expiry, comment), without values and without Touch ID.
+- Path to `fm`: `test_override SECRET_FM /usr/bin/fm`. The test override works only with the
+  test keychain, as the other `SECRET_*` overrides.
+- Checks before the call: `fm` exists and is executable, otherwise code 2 and the advice
+  `secret ls -l | grep -i WORD`.
+- Parts of 40 lines. For each part:
+  - the JSON schema goes to a temporary file (mode 600, `mktemp`, a `trap` deletes it): an object
+    with the array `names`, `items.enum` is the names of the part;
+  - the text goes to the stdin of `fm respond -m system -g --no-stream --schema FILE -i
+    INSTRUCTIONS`: lines `NAME: comment` and the line `Query: QUERY`;
+  - the answer is JSON. `perl` takes the names from the answer (JSON::PP is in the system perl).
+    The command keeps only the names from the part.
+- `fm` error (license, Apple Intelligence off, model not available): the first line of the `fm`
+  stderr without colours, code 2 and the advice.
+- `-l`: for the found names, prints the `ls -l` lines in the order of the answer.
+- Code 1 if nothing is found.
 
-### Тесты (tests/run.sh)
+### Tests (tests/run.sh)
 
-Заглушка `fm` в `$TMP`: пишет свои аргументы и stdin в файл, отвечает заданным JSON.
+A stub `fm` in `$TMP`: writes its arguments and stdin to a file, answers with a given JSON.
 
-- имена из ответа печатаются, порядок ответа сохраняется;
-- имя не из списка отброшено;
-- `{"names":[]}` — код 1, вывод пуст;
-- заглушки нет — код 2 и совет;
-- заглушка видела `-m system`, но не видела ни одного значения;
-- `-l` печатает строку с комментарием;
-- 45 секретов — два вызова заглушки.
+- the names from the answer are printed, the order of the answer is kept;
+- a name not from the list is dropped;
+- `{"names":[]}` — code 1, empty output;
+- no stub — code 2 and the advice;
+- the stub saw `-m system`, but did not see any value;
+- `-l` prints a line with the comment;
+- 45 secrets — two calls of the stub.
 
 ## Constitution Check
 
-- **I**: значения не читаются. В `fm` идут только имена и комментарии.
-- **II**: Touch ID не нужен: команда не читает значений.
-- **III**: `/usr/bin/fm` есть в macOS 27. Без него команда сообщает причину, остальное работает
-  как раньше. `perl` и `JSON::PP` — системные.
-- **IV**: тесты с заглушкой `fm`, без модели.
-- **V**: новый флаг `--ask`, старое поведение `ls` не меняется.
+- **I**: the values are not read. Only names and comments go to `fm`.
+- **II**: Touch ID is not needed: the command does not read values.
+- **III**: `/usr/bin/fm` is in macOS 27. Without it, the command reports the cause; the rest works
+  as before. `perl` and `JSON::PP` are system ones.
+- **IV**: tests with a stub `fm`, without the model.
+- **V**: new flag `--ask`; the old behaviour of `ls` does not change.
 
 ## Complexity Tracking
 
-| Отступление | Причина |
+| Deviation | Reason |
 |---|---|
-| Команда зовёт модель | Только `-m system`, модель на устройстве, без сети. Имена и комментарии уже не тайна для `ls -l`. |
+| The command calls a model | Only `-m system`, the model on the device, without network. Names and comments are already not secret for `ls -l`. |

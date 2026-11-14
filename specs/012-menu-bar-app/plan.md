@@ -1,41 +1,41 @@
-<!-- ste: E1.1 — заголовок задан шаблоном spec-kit -->
-# Implementation Plan: Приложение в строке меню SecretBar
+<!-- ste: E1.1 — the spec-kit template sets this heading -->
+# Implementation Plan: SecretBar menu bar app
 
 **Branch**: `012-menu-bar-app` | **Date**: 2026-10-07 | **Spec**: [spec.md](spec.md)
 
-## Summary <!-- slop: заголовок задан шаблоном spec-kit -->
+## Summary <!-- slop: the spec-kit template sets this heading -->
 
-SwiftUI `MenuBarExtra` со стилем окна. Модель вызывает `secret` и helper через `Process` и
-разбирает вывод. Состояние grace приложение опрашивает раз в 5 секунд командой `grace-status`:
-она не запускает агента. Сборка — `xcodebuild`, подпись ad-hoc.
+SwiftUI `MenuBarExtra` with the window style. The model calls `secret` and the helper through
+`Process` and parses the output. The app polls the grace state once in 5 seconds with the command
+`grace-status`: it does not start the agent. The build is `xcodebuild`, ad-hoc signature.
 
 ## Technical Context
 
-**Language and version**: Swift 6.4 в режиме Swift 5, SwiftUI, macOS 14.
+**Language and version**: Swift 6.4 in Swift 5 mode, SwiftUI, macOS 14.
 
-**Primary Dependencies**: SwiftUI, AppKit (`NSPasteboard` не нужен: буфер ведёт `secret copy`),
-ServiceManagement (`SMAppService` для запуска при входе).
+**Primary Dependencies**: SwiftUI, AppKit (`NSPasteboard` is not necessary: `secret copy` handles
+the clipboard), ServiceManagement (`SMAppService` for launch at login).
 
-**Testing**: `SecretBar --selftest` в `tests/run.sh`. Проверка бинарника: нет `SecItem*`, нет
+**Testing**: `SecretBar --selftest` in `tests/run.sh`. Binary check: no `SecItem*`, no
 entitlements.
 
 ## Constitution Check
 
-| Принцип | Как соблюдается |
+| Principle | How it is met |
 |---|---|
-| I | значения только через stdin `secret set` и `secret copy` |
-| II | Touch ID спрашивает агент helper, как для команды |
-| III | исключение 1.4.0: Xcode, подпись ad-hoc |
-| IV | `--selftest`, проверка бинарника; интерфейс — ручная проверка |
-| V | команды `secret` без изменений |
+| I | values only through stdin of `secret set` and `secret copy` |
+| II | the helper agent asks for Touch ID, as for a command |
+| III | exception 1.4.0: Xcode, ad-hoc signature |
+| IV | `--selftest`, binary check; the interface is a manual check |
+| V | `secret` commands without changes |
 
 ## Project Structure
 
 ```text
 app/
 ├── SecretBar.xcodeproj/project.pbxproj
-├── SecretBar/SecretBarApp.swift    # MenuBarExtra, значок
-├── SecretBar/Model.swift           # вызовы secret, разбор, selftest
-├── SecretBar/Views.swift           # вкладки, строки, формы
-└── build.sh                        # xcodebuild, подпись ad-hoc
+├── SecretBar/SecretBarApp.swift    # MenuBarExtra, icon
+├── SecretBar/Model.swift           # secret calls, parsing, selftest
+├── SecretBar/Views.swift           # tabs, rows, forms
+└── build.sh                        # xcodebuild, ad-hoc signature
 ```

@@ -2,15 +2,15 @@
 
 **Branch**: `005-readme` | **Date**: 2026-10-02 | **Spec**: [spec.md](spec.md)
 
-## Summary <!-- slop: заголовок задан шаблоном spec-kit -->
+## Summary <!-- slop: the heading comes from the spec-kit template -->
 
-Переписать `README.md`: шапка по центру (HTML `div align=center`), значки shields.io, быстрый
-старт, схема Mermaid, возможности таблицей, справочник в `<details>`, модель угроз, FAQ.
+Rewrite `README.md`: a centered header (HTML `div align=center`), shields.io badges, quick
+start, a Mermaid diagram, features as a table, the reference in `<details>`, threat model, FAQ.
 
 ## Constitution Check
 
-Код не меняется. Принцип I: в примерах нет значений секретов.
+The code does not change. Principle I: the examples have no secret values.
 
 ## Complexity Tracking
 
-Отступлений нет.
+No deviations.

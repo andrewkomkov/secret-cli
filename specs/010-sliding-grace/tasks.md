@@ -1,28 +1,28 @@
-# Tasks: Скользящий grace
+# Tasks: Sliding grace
 
 **Input**: `specs/010-sliding-grace/` (spec.md, plan.md)
 
-## Phase 1: Агент helper
+## Phase 1: Helper agent
 
-- [x] T001 `helper/store/main.swift`: цикл агента на `RunLoop` главного потока, сокет через `DispatchSource`
-- [x] T002 [US1] `helper/store/main.swift`: после каждого запроса конец grace — сейчас плюс простой, не позже предела 8 часов от Touch ID по `CLOCK_MONOTONIC` (эти часы идут и во сне)
-- [x] T003 [US2] `helper/store/main.swift`: агента завершают уведомление `com.apple.screenIsLocked` и опрос `CGSessionCopyCurrentDictionary` раз в секунду и перед запросом. Сон Mac агент видит по разнице часов `CLOCK_MONOTONIC` и `CLOCK_UPTIME_RAW` больше 2 секунд
-- [x] T004 [US3] `helper/store/main.swift`: запрос `status` к агенту без Touch ID; команда `grace-status`; простой по умолчанию 1800
-- [x] T005 `helper/store/main.swift`: сборка `Test` — предел из `SECRET_TEST_MAX_GRACE`, команда `test-lock` шлёт уведомление `secretcli.test.lock`
+- [x] T001 `helper/store/main.swift`: agent loop on the `RunLoop` of the main thread, socket through `DispatchSource`
+- [x] T002 [US1] `helper/store/main.swift`: after each request, the end of grace is now plus the idle time, not later than the limit of 8 hours from Touch ID by `CLOCK_MONOTONIC` (this clock also runs during sleep)
+- [x] T003 [US2] `helper/store/main.swift`: the agent is stopped by the notification `com.apple.screenIsLocked` and by a poll of `CGSessionCopyCurrentDictionary` once a second and before a request. The agent sees Mac sleep from a difference of more than 2 seconds between the clocks `CLOCK_MONOTONIC` and `CLOCK_UPTIME_RAW`
+- [x] T004 [US3] `helper/store/main.swift`: the request `status` to the agent without Touch ID; the command `grace-status`; default idle time 1800
+- [x] T005 `helper/store/main.swift`: the `Test` build: the limit from `SECRET_TEST_MAX_GRACE`, the command `test-lock` sends the notification `secretcli.test.lock`
 
-## Phase 2: Команда
+## Phase 2: Command
 
-- [x] T006 [US3] `bin/secret`: `touchid status` показывает простой, предел и остаток grace; `migrate` по умолчанию ставит 1800
+- [x] T006 [US3] `bin/secret`: `touchid status` shows the idle time, the limit and the grace remaining; `migrate` sets 1800 by default
 
-## Phase 3: Тесты и документы
+## Phase 3: Tests and documents
 
-- [x] T007 `tests/run.sh`: SC-001 (простой), SC-002 (предел), SC-003 (`test-lock`), `touchid status`. 268 проверок, 2026-10-07. Сон Mac в тестах не проверяется
-- [x] T008 [P] `README.md`, `docs/claude-md-secrets.md`, раздел Secrets в `~/.claude/CLAUDE.md`: скользящий grace
-- [x] T010 `helper/store/main.swift`: агент после Touch ID читает все записи в память. Запрос отдаёт значение из памяти при той же ссылке записи. Иначе агент читает запись, а при контексте старше 8 минут сначала спрашивает Touch ID со своим текстом (research R11)
-- [x] T011 `helper/store/main.swift`: `attrs` переписывает запись значением из памяти, без Touch ID
-- [x] T012 `tests/run.sh`: значение из памяти без нового вопроса после срока контекста (`SECRET_TEST_CONTEXT_FRESH`). Изменённая запись — новый вопрос. `note` без вопроса. 274 проверки, 2026-10-07
-- [ ] T013 Ручная проверка R11: `secret run` через 15 минут после Touch ID без окна. Записать дату
-- [ ] T009 Ручная проверка SC-004: блокировка экрана владельцем заканчивает grace. Записать дату
+- [x] T007 `tests/run.sh`: SC-001 (idle time), SC-002 (limit), SC-003 (`test-lock`), `touchid status`. 268 checks, 2026-10-07. The tests do not check Mac sleep
+- [x] T008 [P] `README.md`, `docs/claude-md-secrets.md`, the Secrets section in `~/.claude/CLAUDE.md`: sliding grace
+- [x] T010 `helper/store/main.swift`: after Touch ID, the agent reads all items into memory. A request gets the value from memory if the item reference is the same. If not, the agent reads the item; if the context is older than 8 minutes, it first asks for Touch ID with its own text (research R11)
+- [x] T011 `helper/store/main.swift`: `attrs` rewrites the item with the value from memory, without Touch ID
+- [x] T012 `tests/run.sh`: a value from memory without a new question after the context lifetime (`SECRET_TEST_CONTEXT_FRESH`). A changed item gives a new question. `note` without a question. 274 checks, 2026-10-07
+- [ ] T013 Manual check of R11: `secret run` 15 minutes after Touch ID without a window. Record the date
+- [ ] T009 Manual check of SC-004: a screen lock by the owner ends grace. Record the date
 
 ## Dependencies
 

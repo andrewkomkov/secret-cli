@@ -1,10 +1,10 @@
-# Tasks: push формулы tap по SSH deploy key
+# Tasks: push of the tap formula with an SSH deploy key
 
 **Input**: `specs/028-tap-deploy-key/spec.md`
 
-- [x] T001 [US1] `.github/workflows/release.yml`: джоба `formula` — SSH deploy key вместо HTTPS-токена, env `HOMEBREW_TAP_DEPLOY_KEY`, ветка «нет ключа» с warning
-- [x] T002 [US2] провиженинг: `ssh-keygen` ed25519, `gh repo deploy-key add --allow-write` на `homebrew-secret`
-- [x] T003 [US2] base64 приватного ключа в хранилище под `HOMEBREW_TAP_DEPLOY_KEY` (пайпом, без argv)
-- [x] T004 [US2] `secret gh HOMEBREW_TAP_DEPLOY_KEY -R andrewkomkov/secret-cli` (владелец подтверждает в окне), удалить локальные файлы ключа
-- [x] T005 проверка права записи ключа: клон tap по SSH и доступ на запись (без релиза)
-- [x] T006 ручная, 2026-11-03: релиз 1.4.0 — джоба `formula` сама обновила url и sha256 в tap по SSH deploy key (коммит «secret 1.4.0»), формула встала на v1.4.0, cookies-строка сохранена, tap CI brew install зелёный.
+- [x] T001 [US1] `.github/workflows/release.yml`: job `formula` — SSH deploy key instead of an HTTPS token, env `HOMEBREW_TAP_DEPLOY_KEY`, "no key" branch with a warning
+- [x] T002 [US2] provisioning: `ssh-keygen` ed25519, `gh repo deploy-key add --allow-write` on `homebrew-secret`
+- [x] T003 [US2] base64 of the private key in the store under `HOMEBREW_TAP_DEPLOY_KEY` (through a pipe, without argv)
+- [x] T004 [US2] `secret gh HOMEBREW_TAP_DEPLOY_KEY -R andrewkomkov/secret-cli` (the owner confirms in the window), delete the local key files
+- [x] T005 check of the key write permission: clone of the tap over SSH and write access (without a release)
+- [x] T006 manual, 2026-11-03: release 1.4.0 — the job `formula` itself updated url and sha256 in the tap with the SSH deploy key (commit "secret 1.4.0"), the formula moved to v1.4.0, the cookies line was kept, the tap CI brew install is green.

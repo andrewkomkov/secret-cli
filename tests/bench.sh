@@ -1,7 +1,7 @@
 #!/bin/bash
-# Замер secret на временном keychain: N записей (по умолчанию 40), run с 5 ссылками, check, import.
+# Benchmark of secret on a temporary keychain: N items (default 40), run with 5 references, check, import.
 #   N=300 tests/bench.sh
-#   DP=1 N=300 tests/bench.sh   хранилище data protection на тестовой сборке helper (build/test, 009)
+#   DP=1 N=300 tests/bench.sh   data protection store on the test build of the helper (build/test, 009)
 S="$(cd "$(dirname "$0")/.." && pwd)/bin/secret"
 T=$(mktemp -d)
 export SECRET_KEYCHAIN=$T/b.keychain-db SECRET_LOG=$T/log SECRET_NAMES_CACHE=$T/names SECRET_NO_DIALOG=1

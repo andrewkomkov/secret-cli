@@ -1,43 +1,43 @@
-# Feature Specification: хук без ложных срабатываний
+# Feature Specification: a hook without false positives
 
-**Feature Branch**: `023-hook-precision`. Работа идёт в `main`.
+**Feature Branch**: `023-hook-precision`. The work goes on in `main`.
 
 **Created**: 2026-10-22
 
 **Status**: Done 2026-10-22
 
-**Input**: Владелец: «поправь хуки где надо, чтоб я с новой версией работал хорошо». 2026-10-22 хук
-трижды остановил безопасные команды агента:
+**Input**: The owner: "fix the hooks where necessary, so that I can work well with the new version". On 2026-10-22 the hook
+stopped safe commands of the agent three times:
 
-- heredoc `cat > spec.md` с текстом «`secret touchid repair`» внутри.
-- `codesign --verify` для helper хранилища.
-- Правку `tests/run.sh` с именами тестовых переменных в тексте.
+- heredoc `cat > spec.md` with the text "`secret touchid repair`" inside.
+- `codesign --verify` for the store helper.
+- An edit of `tests/run.sh` with the names of test variables in the text.
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Текст в файл (Priority: P1)
+### User Story 1 - Text to a file (Priority: P1)
 
-1. **When** агент пишет текст через `cat > FILE <<EOF`, `tee FILE <<EOF` или `git commit -F - <<EOF`,
-   **Then** хук не проверяет тело heredoc.
-2. **When** тело heredoc идёт в `sh`, `bash`, `zsh` или другую программу, **Then** хук проверяет
-   тело как команды.
+1. **When** the agent writes text through `cat > FILE <<EOF`, `tee FILE <<EOF` or `git commit -F - <<EOF`,
+   **Then** the hook does not check the heredoc body.
+2. **When** the heredoc body goes to `sh`, `bash`, `zsh` or another program, **Then** the hook checks
+   the body as commands.
 
-### User Story 2 - Проверка helper без запуска (Priority: P1)
+### User Story 2 - Check of the helper without a run (Priority: P1)
 
-1. **When** команда только смотрит на файл helper (`codesign`, `ls`, `stat`, `file`, `shasum`,
-   `xattr`, `spctl`), **Then** хук пропускает её.
-2. **When** в той же части команды есть `$(` или обратная кавычка, **Then** хук блокирует её,
-   как раньше.
-3. Запуск helper под любым именем хук блокирует, как раньше.
+1. **When** a command only looks at the helper file (`codesign`, `ls`, `stat`, `file`, `shasum`,
+   `xattr`, `spctl`), **Then** the hook lets it through.
+2. **When** the same part of the command has `$(` or a backquote, **Then** the hook blocks it,
+   as before.
+3. The hook blocks a run of the helper under any name, as before.
 
 ## Requirements *(mandatory)*
 
-- **FR-001**: хук вырезает тело heredoc у `cat`, `tee`, `git` перед проверкой.
-- **FR-002**: правило helper хранилища пропускает части команды, которые начинаются с программы
-  из списка чтения.
-- **FR-003**: все прежние проверки `hook blocks` проходят.
+- **FR-001**: the hook cuts out the heredoc body for `cat`, `tee`, `git` before the check.
+- **FR-002**: the store helper rule lets through the parts of a command that start with a program
+  from the read list.
+- **FR-003**: all previous `hook blocks` checks pass.
 
 ## Success Criteria *(mandatory)*
 
-- **SC-001**: три команды из Input проходят хук.
-- **SC-002**: `tests/run.sh` проходит целиком.
+- **SC-001**: the three commands from Input pass the hook.
+- **SC-002**: `tests/run.sh` passes in full.

@@ -1,23 +1,24 @@
-# Design (из баг-репорта владельца): cookie из всех профилей Safari
+# Design (from the owner's bug report): cookies from all Safari profiles
 
-Это дословный проект изменения. Реализация следует ему.
+This is the verbatim design of the change. The implementation follows it.
 
 ## Change
 
-- `secret-cookies` читает дефолтный файл и каждый
-  `WebsiteDataStore/*/Cookies/Cookies.binarycookies`. Профиль без файла пропускается.
-- У каждого cookie есть профиль: `default` или UUID каталога.
-- `secret cookie ls` показывает профиль в новой колонке `PROFILE`.
-- Флаг `--profile ID` (`ls`, `pull`) читает один профиль.
-- Одинаковый cookie в нескольких профилях: `pull` берёт cookie с самой поздней датой протухания.
-  Несколько путей или несколько доменов для имени — ошибка (код 3), как раньше.
-- Команда хелпера `which` даёт профиль и дату cookie, который отдаёт `value`. `pull` зовёт `which`,
-  затем `value --profile`. Так дата и комментарий секрета — из того же cookie, что и значение.
-- `secret-cookies path` показывает все файлы: `profile<TAB>file`.
+- `secret-cookies` reads the default file and each
+  `WebsiteDataStore/*/Cookies/Cookies.binarycookies`. A profile without a file is skipped.
+- Each cookie has a profile: `default` or the UUID of the directory.
+- `secret cookie ls` shows the profile in a new column `PROFILE`.
+- The flag `--profile ID` (`ls`, `pull`) reads one profile.
+- The same cookie in several profiles: `pull` takes the cookie with the latest expiry date.
+  Several paths or several domains for a name is an error (code 3), as before.
+- The helper command `which` gives the profile and the date of the cookie that `value` gives.
+  `pull` calls `which`, then `value --profile`. So the date and the comment of the secret come
+  from the same cookie as the value.
+- `secret-cookies path` shows all files: `profile<TAB>file`.
 
 ## helper/cookies/main.swift
 
-Шапка и путь:
+Header and path:
 
 ```swift
 // secret-cookies: reads Safari Cookies.binarycookies of all profiles (027). Only `value` prints a value.
@@ -35,7 +36,7 @@ let safariLibrary = NSHomeDirectory() + "/Library/Containers/com.apple.Safari/Da
 #endif
 ```
 
-Поле `profile` в `Cookie`. `parse` не меняется:
+The field `profile` in `Cookie`. `parse` does not change:
 
 ```swift
 struct Cookie {
@@ -50,7 +51,7 @@ struct Cookie {
 }
 ```
 
-Список файлов и чтение одного файла заменяют `cookiesPath` и `loadCookies()`:
+The list of files and the read of one file replace `cookiesPath` and `loadCookies()`:
 
 ```swift
 struct Store { let profile: String; let path: String }
@@ -102,7 +103,7 @@ func allCookies(_ profile: String?) -> [Cookie] {
 }
 ```
 
-Выбор одного cookie для `value` и `which`:
+Choice of one cookie for `value` and `which`:
 
 ```swift
 // The same cookie in several profiles is one site login: the latest expiry is the newest login.
@@ -124,7 +125,7 @@ func pick(_ cs: [Cookie], _ domain: String, _ name: String, _ path: String?) -> 
 }
 ```
 
-Команды:
+Commands:
 
 ```swift
 var args = Array(CommandLine.arguments.dropFirst())
@@ -154,7 +155,7 @@ default:
 
 ## bin/secret
 
-`cookies_run`: ошибка хелпера уже называет файл, поэтому второй вызов `path` убран:
+`cookies_run`: the helper error already names the file, so the second call of `path` is removed:
 
 ```bash
   if [ $rc -eq 77 ]; then
@@ -225,7 +226,7 @@ cmd_cookie() {
 }
 ```
 
-Текст usage:
+Usage text:
 
 ```
   secret cookie ls [--profile ID] DOMAIN
@@ -239,17 +240,19 @@ cmd_cookie() {
 
 ## Tests
 
-Тестовая сборка читает `SECRET_TEST_SAFARI` вместо `SECRET_TEST_COOKIES`. Каталог фикстуры имеет
-`Cookies/Cookies.binarycookies` и `WebKit/WebsiteDataStore/<UUID>/Cookies/Cookies.binarycookies`.
+The test build reads `SECRET_TEST_SAFARI` instead of `SECRET_TEST_COOKIES`. The fixture
+directory has `Cookies/Cookies.binarycookies` and
+`WebKit/WebsiteDataStore/<UUID>/Cookies/Cookies.binarycookies`.
 
-1. Cookie только в профиле: `ls` показывает его с UUID, `pull` кладёт значение.
-2. Один cookie в `default` и в профиле с разными датами. `pull` кладёт значение с поздней датой.
-   Ставит эту дату в `-x`.
-3. `--profile default` со случаем 2: `pull` кладёт значение из `default`.
-4. `--profile` с неизвестным ID: код 1, сообщение `no Safari profile`.
-5. Нет каталога `WebsiteDataStore`: результат как в 1.3.0.
-6. Каталог профиля без `Cookies.binarycookies`: код 0, результат имеет cookie других профилей.
-7. Битый файл в профиле: код 65, сообщение называет файл.
-8. Два пути для одного имени в двух профилях: код 3, оба пути на stderr.
-9. `path` показывает `default` и каждый UUID.
-10. stdout `which` и `path` и комментарий секрета не содержат значения cookie.
+1. A cookie only in a profile: `ls` shows it with the UUID, `pull` stores the value.
+2. One cookie in `default` and in a profile with different dates. `pull` stores the value with
+   the later date. It sets this date in `-x`.
+3. `--profile default` with case 2: `pull` stores the value from `default`.
+4. `--profile` with an unknown ID: code 1, message `no Safari profile`.
+5. No directory `WebsiteDataStore`: the result is as in 1.3.0.
+6. A profile directory without `Cookies.binarycookies`: code 0, the result has the cookies of
+   the other profiles.
+7. A broken file in a profile: code 65, the message names the file.
+8. Two paths for one name in two profiles: code 3, both paths on stderr.
+9. `path` shows `default` and each UUID.
+10. The stdout of `which` and `path` and the secret comment do not contain the cookie value.

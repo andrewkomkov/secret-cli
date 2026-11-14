@@ -1,15 +1,15 @@
-# Tasks: Перенос секретов из .env проектов
+# Tasks: Move secrets out of project .env files
 
 **Input**: `specs/013-env-sweep/spec.md`
 
-- [x] T001 `bin/secret`: `import --keys`, `import --ref`, проверка ключей до изменения файла
-- [x] T002 `bin/secret`: ошибки `parse_line` с номером строки, без текста
-- [x] T003 `bin/secret`: `is_test_kc` без рабочего файла keychain сравнивает пути
-- [x] T004 `tests/run.sh`: тесты `013:`. 285 проверок, 2026-10-07
-- [x] T005 Перенос по файлам, 2026-10-07. Новые секреты: 10. Ссылки на существующие вместо дублей: 8. У каждого секрета есть комментарий
-- [x] T009 Один `.env.local.test` пропущен: файл лежит в git командной репы, compose читает его через `env_file`. В одном `.env` токены пустые
-- [x] T010 Ошибка при переносе: `--ref` без `--keys` перенёс `PORT`, `HOST`, `USER` и ещё один ключ под общими именами. Ссылки исправлены, общие имена удалены, `import` исправлен
-- [x] T006 Один `.env` в формате JSON: 2 секрета, в JSON ссылки
-- [x] T007 Старая копия `.env.*.bak`: 4 секрета, файл удалён (`rm -P`)
-- [x] T011 Проверка безопасности: тестовые переменные с настоящим helper вели к рабочему хранилищу, `SECRET_PBCOPY` мог забрать значение. Подмены работают только с существующим тестовым keychain и тестовым helper (`kind` = `test`). 292 проверки, 2026-10-07
-- [ ] T008 Резервная копия `secret export` после переноса. 2026-10-08 владелец отказался делать копию; задача остаётся открытой
+- [x] T001 `bin/secret`: `import --keys`, `import --ref`, check of the keys before the file changes
+- [x] T002 `bin/secret`: `parse_line` errors with the line number, without the text
+- [x] T003 `bin/secret`: `is_test_kc` without the working keychain file compares paths
+- [x] T004 `tests/run.sh`: tests `013:`. 285 checks, 2026-10-07
+- [x] T005 Move file by file, 2026-10-07. New secrets: 10. References to existing secrets instead of duplicates: 8. Each secret has a comment
+- [x] T009 One `.env.local.test` skipped: the file is in git of a team repository, compose reads it through `env_file`. In one `.env` the tokens are empty
+- [x] T010 Error during the move: `--ref` without `--keys` moved `PORT`, `HOST`, `USER` and one more key under generic names. The references are fixed, the generic names are deleted, `import` is fixed
+- [x] T006 One `.env` in JSON format: 2 secrets, references in the JSON
+- [x] T007 Old copy `.env.*.bak`: 4 secrets, the file is deleted (`rm -P`)
+- [x] T011 Security check: test variables with the real helper led to the working store, `SECRET_PBCOPY` could take a value. Overrides work only with an existing test keychain and a test helper (`kind` = `test`). 292 checks, 2026-10-07
+- [ ] T008 Backup `secret export` after the move. 2026-10-08 the owner refused to make a backup; the task stays open

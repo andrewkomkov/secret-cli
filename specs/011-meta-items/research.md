@@ -1,7 +1,7 @@
-# Research: служебные записи
+# Research: metadata items
 
-| # | Проверка | Результат |
+| # | Check | Result |
 |---|---|---|
-| R12 | Окна Touch ID по журналу `coreauthd`, 2026-10-07 | за 3 часа 382 окна. На первый `secret run` — 3 окна: `policy show`, `list` и агент. На каждый следующий — 2 окна. Операция ACL `od` |
-| R13 | `secret ls` после R12 | окно Touch ID на `policy show`. Владелец нажал Cancel, helper получил `-128` |
-| R14 | Рабочее хранилище после 011 | `ls`, `ls -l`, `has`, `touchid status` — 0 окон. Два `secret run` подряд — 1 окно. Агент загрузил 49 значений без системных окон |
+| R12 | Touch ID windows in the `coreauthd` log, 2026-10-07 | 382 windows in 3 hours. For the first `secret run`: 3 windows: `policy show`, `list` and the agent. For each next one: 2 windows. ACL operation `od` |
+| R13 | `secret ls` after R12 | a Touch ID window for `policy show`. The owner clicked Cancel, the helper got `-128` |
+| R14 | Production store after 011 | `ls`, `ls -l`, `has`, `touchid status`: 0 windows. Two `secret run` in a row: 1 window. The agent loaded 49 values without system windows |

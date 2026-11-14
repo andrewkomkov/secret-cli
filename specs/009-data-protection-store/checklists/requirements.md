@@ -1,4 +1,4 @@
-# Specification Quality Checklist: Хранилище data protection keychain
+# Specification Quality Checklist: Data protection keychain store
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-10-07
@@ -31,5 +31,6 @@
 
 ## Notes
 
-- Спецификация называет Touch ID, keychain, Xcode, `.userPresence`: для этой фичи это предмет
-  требований, а не способ реализации. Так же написаны спецификации 004 и 007.
+- The specification names Touch ID, keychain, Xcode, `.userPresence`: for this feature they are
+  the subject of the requirements, not the way of implementation. Specifications 004 and 007 are
+  written the same way.

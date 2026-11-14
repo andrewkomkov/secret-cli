@@ -1,50 +1,50 @@
-# Feature Specification: открытая репа и установка через Homebrew
+# Feature Specification: public repository and install through Homebrew
 
-**Feature Branch**: `022-public-brew`. Работа идёт в `main`.
+**Feature Branch**: `022-public-brew`. The work goes on in `main`.
 
 **Created**: 2026-10-22
 
 **Status**: Done 2026-10-22
 
-**Input**: Владелец: «нужно чтоб наш софт был в открытой репе и устанавливался через brew».
-Владелец потребовал убрать из репы и истории все упоминания работодателя. Старую историю
-удалить, в открытой репе оставить один коммит.
+**Input**: The owner: "our software must be in a public repository and install through brew".
+The owner required to remove all mentions of the employer from the repository and the history. Delete the old history,
+keep one commit in the public repository.
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Установка одной командой (Priority: P1)
+### User Story 1 - Install with one command (Priority: P1)
 
-1. **When** человек запускает `brew install andrewkomkov/secret/secret`, **Then** Homebrew ставит
-   команду `secret` и автодополнение zsh. Затем Homebrew собирает helper Touch ID и helper
-   хранилища Secure Enclave.
-2. `brew upgrade` ставит новую версию. Если helper хранилища изменился и подпись у него ad-hoc,
-   команда просит одно касание `secret touchid repair`.
-3. SecretBar и хук Claude Code человек ставит сам: `$(brew --prefix secret)/libexec/install.sh
-   --app --claude-hook`. Для SecretBar нужен Xcode.
+1. **When** a human runs `brew install andrewkomkov/secret/secret`, **Then** Homebrew installs
+   the `secret` command and the zsh completion. Then Homebrew builds the Touch ID helper and the helper
+   of the Secure Enclave store.
+2. `brew upgrade` installs a new version. If the store helper changed and its signature is ad-hoc,
+   the command asks for one touch of `secret touchid repair`.
+3. The human installs SecretBar and the Claude Code hook: `$(brew --prefix secret)/libexec/install.sh
+   --app --claude-hook`. SecretBar needs Xcode.
 
-### User Story 2 - Открытая репа без личного (Priority: P1)
+### User Story 2 - Public repository without personal data (Priority: P1)
 
-1. В файлах и в истории нет имени работодателя, его проектов, личных путей и имён секретов
-   владельца.
-2. История начинается с одного коммита, автор — личный адрес владельца.
-3. Полная старая история лежит только на Mac владельца, в bundle-файле.
+1. The files and the history have no name of the employer, no names of its projects, no personal paths and no secret names
+   of the owner.
+2. The history starts with one commit, the author is the personal address of the owner.
+3. The full old history is only on the owner's Mac, in a bundle file.
 
 ## Requirements *(mandatory)*
 
-- **FR-001**: публичная репа `github.com/andrewkomkov/secret-cli`, лицензия MIT.
-- **FR-002**: tap `github.com/andrewkomkov/homebrew-secret`, формула `secret`, сборка из исходника
-  тега.
-- **FR-003**: SecretBar ищет ссылки `secret:NAME` в каталоге из настройки `projectsDir`, по
-  умолчанию в домашнем каталоге.
-- **FR-004**: демо-данные, тесты и документы используют вымышленные проекты.
+- **FR-001**: public repository `github.com/andrewkomkov/secret-cli`, MIT license.
+- **FR-002**: tap `github.com/andrewkomkov/homebrew-secret`, formula `secret`, build from the source of
+  the tag.
+- **FR-003**: SecretBar searches for references `secret:NAME` in the directory from the `projectsDir` setting, by
+  default in the home directory.
+- **FR-004**: demo data, tests and documents use fictional projects.
 
 ## Success Criteria *(mandatory)*
 
-- **SC-001**: на чистом префиксе `brew install` и `brew test` проходят.
-- **SC-002**: поиск по репе и истории не находит слов из списка запретов.
-- **SC-003**: `tests/run.sh` проходит целиком.
+- **SC-001**: on a clean prefix, `brew install` and `brew test` pass.
+- **SC-002**: a search of the repository and the history finds no words from the deny list.
+- **SC-003**: `tests/run.sh` passes in full.
 
 ## Assumptions
 
-- Пользователь brew работает на macOS с Command Line Tools: Homebrew без них не работает.
-- У пользователя обычно нет сертификата Apple Development. Тогда helper получает подпись ad-hoc.
+- The brew user works on macOS with the Command Line Tools: Homebrew does not work without them.
+- The user usually has no Apple Development certificate. Then the helper gets an ad-hoc signature.

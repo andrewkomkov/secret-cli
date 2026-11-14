@@ -1,13 +1,13 @@
-# Tasks: импорт cookie из Safari в хранилище
+# Tasks: import of cookies from Safari into the store
 
 **Input**: `specs/027-safari-cookie-import/spec.md`
 
-- [x] T001 [US1] `helper/cookies/main.swift`: парсер `.binarycookies`, подкоманды `list DOMAIN` и `value DOMAIN NAME [PATH]`, тестовый путь из `SECRET_TEST_COOKIES`, код `77` на `EPERM`/`EACCES`
-- [x] T002 [US1] `helper/cookies/build.sh` по образцу `helper/store/build.sh`: `Release`/`Test`, подпись, `*.src-sha256`
-- [x] T003 [US1] `bin/secret`: `cmd_cookie`, ветка `cookie)` в диспетчере, `secret cookie ls DOMAIN`, печать таблицы, гейт Full Disk Access с открытием панели Настроек
-- [x] T004 [US2] `secret cookie pull DOMAIN NAME --as SECRET [--path PATH]`: значение пайпом в запись хранилища, `-x` из даты протухания, комментарий `safari cookie DOMAIN NAME`, проверка имени как у `set`
-- [x] T005 `install.sh`: сборка хелпера cookies рядом со store; без `swiftc` — сообщение о недоступности
-- [x] T006 [US1][US2] `tests/run.sh`: синтетический `.binarycookies` как фикстура, проверка списка имён и извлечения значения, без Safari и Full Disk Access
-- [x] T007 README, README.ru, сайт `site/`: команда `secret cookie`, требование Full Disk Access, предел in-memory cookie
-- [x] T008 `docs/claude-md-secrets.md`: правило для агента по `secret cookie` (импорт сессии вместо чтения значения)
-- [x] T009 ручная, 2026-11-03: `secret cookie ls google.com` на реальном Safari даёт верные имена, флаги (`HSID` — только `HTTPOnly`, `NID`/`__Secure-1PSID` — `Secure,HTTPOnly`) и даты; гейт FDA даёт код 77 без доступа. Так нашли и починили баг: тег страницы — big-endian (парсер читал little-endian, фикстура повторяла ошибку). `pull` в реальный Secure Enclave с целевой cookie владелец выполняет сам — конвейер покрыт тестами в файловом режиме.
+- [x] T001 [US1] `helper/cookies/main.swift`: `.binarycookies` parser, subcommands `list DOMAIN` and `value DOMAIN NAME [PATH]`, test path from `SECRET_TEST_COOKIES`, code `77` on `EPERM`/`EACCES`
+- [x] T002 [US1] `helper/cookies/build.sh` after the model of `helper/store/build.sh`: `Release`/`Test`, signature, `*.src-sha256`
+- [x] T003 [US1] `bin/secret`: `cmd_cookie`, branch `cookie)` in the dispatcher, `secret cookie ls DOMAIN`, table output, Full Disk Access gate that opens the Settings pane
+- [x] T004 [US2] `secret cookie pull DOMAIN NAME --as SECRET [--path PATH]`: value through a pipe into the store record, `-x` from the expiry date, comment `safari cookie DOMAIN NAME`, name check as in `set`
+- [x] T005 `install.sh`: build of the cookies helper next to the store; without `swiftc`, a message that it is not available
+- [x] T006 [US1][US2] `tests/run.sh`: synthetic `.binarycookies` as a fixture, check of the list of names and of the value extraction, without Safari and Full Disk Access
+- [x] T007 README, README.ru, site `site/`: command `secret cookie`, the Full Disk Access requirement, the in-memory cookie limit
+- [x] T008 `docs/claude-md-secrets.md`: rule for the agent on `secret cookie` (import of the session instead of reading the value)
+- [x] T009 manual, 2026-11-03: `secret cookie ls google.com` on the real Safari gives the correct names, flags (`HSID` — only `HTTPOnly`, `NID`/`__Secure-1PSID` — `Secure,HTTPOnly`) and dates; the FDA gate gives code 77 without access. This found and fixed a bug: the page tag is big-endian (the parser read little-endian, and the fixture repeated the error). The owner runs `pull` into the real Secure Enclave with the target cookie; the pipeline is covered by tests in file mode.

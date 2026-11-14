@@ -1,20 +1,21 @@
-# Research: скользящий grace
+# Research: sliding grace
 
-| # | Проверка | Результат |
+| # | Check | Result |
 |---|---|---|
-| R11 | Срок подтверждённого `LAContext` для keychain, 2026-10-07, рабочее хранилище | контекст подтверждён в 14:31:11. В 14:41 появилось окно системы «SecretStore needs to authenticate to continue». Причину не подтвердили: окно мог открыть и короткий процесс `policy show`, а не агент (011 R12). Значения в памяти агента закрывают оба случая |
+| R11 | Lifetime of a confirmed `LAContext` for the keychain, 2026-10-07, production store | the context was confirmed at 14:31:11. At 14:41 the system window "SecretStore needs to authenticate to continue" appeared. The cause was not confirmed: the short process `policy show` could also open the window, not the agent (011 R12). Values in the agent memory cover both cases |
 
-## Решение
+## Decision
 
-Агент после Touch ID читает все записи и держит значения в памяти до конца grace. Запрос
-отдаёт значение из памяти, если ссылка записи (`kSecReturnPersistentRef`) не изменилась: запись
-переписывают удалением и созданием, и ссылка меняется. Если значения нет в памяти или ссылка
-другая, агент читает запись. Если контекст старше 8 минут, агент сначала спрашивает Touch ID
-со своим текстом. Окно Touch ID всегда показывает текст helper.
+After Touch ID, the agent reads all items and keeps the values in memory until the end of grace.
+A request gets the value from memory if the item reference (`kSecReturnPersistentRef`) did not
+change: an item is rewritten by delete and create, and the reference changes. If the value is
+not in memory or the reference is different, the agent reads the item. If the context is older
+than 8 minutes, the agent first asks for Touch ID with its own text. The Touch ID window always
+shows the text of the helper.
 
-`attrs` (`note`, `expire`) переписывает запись значением из памяти: удаление и создание не
-требуют Touch ID (research 009 R8).
+`attrs` (`note`, `expire`) rewrites the item with the value from memory: delete and create do not
+need Touch ID (research 009 R8).
 
 Alternatives:
-- Держать только контекст. Тогда окно появляется каждые 10 минут.
-- Вернуть grace 300 секунд. Владелец просил реже.
+- Keep only the context. Then the window appears each 10 minutes.
+- Go back to grace 300 seconds. The owner asked for fewer questions.

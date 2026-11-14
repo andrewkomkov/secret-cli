@@ -1,4 +1,4 @@
-# Implementation Plan: хук без ложных срабатываний
+# Implementation Plan: a hook without false positives
 
 **Spec**: `specs/023-hook-precision/spec.md`
 
@@ -6,20 +6,20 @@
 
 `hooks/claude-pretooluse.sh`, perl.
 
-- Heredoc: строка с `<<WORD`, `<<'WORD'`, `<<"WORD"` или `<<-WORD`. Программа перед `<<` — первое
-  слово этой части команды. Для `cat`, `tee`, `git` хук убирает строки до строки `WORD`. Для других
-  программ тело остаётся.
-- Helper хранилища: команда делится на части по `;`, `&`, `|`, переводу строки. Часть с
-  `secret-vault` хук пропускает, если её первое слово — `codesign`, `ls`, `stat`, `file`,
-  `shasum`, `xattr`, `spctl`, и в ней нет `$(` и обратной кавычки.
+- Heredoc: a line with `<<WORD`, `<<'WORD'`, `<<"WORD"` or `<<-WORD`. The program before `<<` is the first
+  word of this part of the command. For `cat`, `tee`, `git`, the hook removes the lines up to the line `WORD`. For other
+  programs, the body stays.
+- Store helper: the command is split into parts at `;`, `&`, `|` and newline. The hook lets through a part with
+  `secret-vault` if its first word is `codesign`, `ls`, `stat`, `file`,
+  `shasum`, `xattr`, `spctl`, and it has no `$(` and no backquote.
 
 ## Constitution Check
 
-- I: хук по-прежнему блокирует вывод значений. `cat` пишет тело heredoc в файл как текст,
-  shell его не запускает.
-- IV: проверки `023:` в `tests/run.sh`.
-- V: команды не меняются.
+- I: the hook still blocks the output of values. `cat` writes the heredoc body to a file as text,
+  the shell does not run it.
+- IV: checks `023:` in `tests/run.sh`.
+- V: the commands do not change.
 
 ## Complexity Tracking
 
-Нет отступлений.
+No deviations.

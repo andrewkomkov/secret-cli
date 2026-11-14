@@ -1,99 +1,99 @@
-# Feature Specification: Защита от утечек при работе агента
+# Feature Specification: Leak protection during agent work
 
-**Feature Branch**: `001-agent-safety` (работа идёт в `main` локальной репы)
+**Feature Branch**: `001-agent-safety` (the work is done in `main` of the local repo)
 
 **Created**: 2026-10-02
 
 **Status**: Done — 2026-10-02
 
-**Input**: Владелец хочет, чтобы агент мог создавать секреты, не видя значений, чтобы значения
-не попадали в вывод команд, чтобы было видно, какие секреты брал агент, и чтобы запрет на
-чтение значений держался не только на правиле в `CLAUDE.md`.
+**Input**: The owner wants the agent to create secrets without seeing the values. Values must
+not get into command output. It must be visible which secrets the agent took. The ban on
+reading values must rest on more than a rule in `CLAUDE.md`.
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Агент создаёт пароль, не видя его (Priority: P1)
+### User Story 1 - The agent creates a password without seeing it (Priority: P1)
 
-Агенту нужен новый пароль, например для учётки БД. Он запускает одну команду, пароль
-появляется в keychain, а в выводе есть только имя и длина.
+The agent needs a new password, for example for a DB account. It runs one command. The
+password appears in the keychain, and the output has only the name and the length.
 
-**Independent Test**: `secret gen -l 24 NAME` — в keychain запись длиной 24, в выводе значения нет.
-
-**Acceptance Scenarios**:
-
-1. **Given** NAME нет, **When** `secret gen NAME`, **Then** в keychain запись из 32 символов
-   `A-Za-z0-9`, вывод — `generated: NAME (32 chars)`.
-2. **Given** NAME есть, **When** `secret gen NAME`, **Then** ошибка, старое значение осталось.
-   С `-f` значение заменяется.
-3. **When** `secret gen -s symbols NAME`, **Then** в значении есть и символы
-   `!#%+-.=@^_~`, но нет кавычек, `\`, `$`, `` ` `` и пробела.
-
-### User Story 2 - Значения не попадают в вывод (Priority: P1)
-
-Агент запускает команду с секретами. Если команда печатает значение (`curl -v`, отладка),
-вместо него в выводе `***`.
-
-**Independent Test**: `secret run --mask NAME -- sh -c 'echo "$NAME"; echo "$NAME" >&2'` печатает
-`***` в stdout и в stderr.
+**Independent Test**: `secret gen -l 24 NAME` — the keychain has an item of length 24, the output has no value.
 
 **Acceptance Scenarios**:
 
-1. **Given** `--mask`, **When** команда печатает значение в stdout или stderr, **Then** там `***`.
-2. **Given** `--mask`, **When** команда завершается с кодом N, **Then** `secret run` завершается с кодом N.
-3. **Given** `SECRET_RUN_MASK=1`, **When** `secret run` без флага, **Then** маскировка включена.
-4. **Given** `--mask` и `-e .env`, **Then** маскируются значения из ссылок `secret:`, а простые
-   значения `.env` (порты, хосты) не маскируются.
+1. **Given** NAME does not exist, **When** `secret gen NAME`, **Then** the keychain has an item of 32 characters
+   `A-Za-z0-9`, the output is `generated: NAME (32 chars)`.
+2. **Given** NAME exists, **When** `secret gen NAME`, **Then** an error, the old value stays.
+   With `-f` the value is replaced.
+3. **When** `secret gen -s symbols NAME`, **Then** the value also has the characters
+   `!#%+-.=@^_~`, but no quotes, `\`, `$`, `` ` `` or space.
 
-### User Story 3 - Видно, какие секреты брали (Priority: P2)
+### User Story 2 - Values do not get into the output (Priority: P1)
 
-Владелец смотрит, когда и какие секреты читались и кто читал: человек или агент.
+The agent runs a command with secrets. If the command prints a value (`curl -v`, debugging),
+the output has `***` in its place.
 
-**Independent Test**: после `secret get A` и `secret run B -- true` команда `secret log`
-показывает две строки с временем, командой, именем и источником; значений в журнале нет.
+**Independent Test**: `secret run --mask NAME -- sh -c 'echo "$NAME"; echo "$NAME" >&2'` prints
+`***` to stdout and to stderr.
 
 **Acceptance Scenarios**:
 
-1. **When** `get`, `run`, `copy`, `export` читают секрет, **Then** в журнал пишется строка:
-   время, команда, имена, `agent` или `human`, родительский процесс.
-2. **Given** `SECRET_LOG=off`, **Then** журнал не пишется.
-3. **When** `secret log -n 5 NAME`, **Then** последние 5 строк про NAME.
+1. **Given** `--mask`, **When** the command prints a value to stdout or stderr, **Then** it shows `***`.
+2. **Given** `--mask`, **When** the command exits with code N, **Then** `secret run` exits with code N.
+3. **Given** `SECRET_RUN_MASK=1`, **When** `secret run` without the flag, **Then** masking is on.
+4. **Given** `--mask` and `-e .env`, **Then** the values from `secret:` references are masked, and plain
+   `.env` values (ports, hosts) are not masked.
 
-### User Story 4 - Агенту нельзя читать значения в обход правил (Priority: P2)
+### User Story 3 - It is visible which secrets were taken (Priority: P2)
 
-Хук Claude Code останавливает команды, которые выводят значения: `secret get`,
-`security find-generic-password -w`/`-g`, `security dump-keychain -d`, вывод `.env` через
-`cat`/`less`/`head`/`tail`/`bat`, вывод окружения внутри `secret run` (`env`, `printenv`, `set`).
+The owner sees when and which secrets were read, and who read them: a human or the agent.
 
-**Independent Test**: хуку на вход подаётся JSON с такой командой — код выхода 2 и причина в
-stderr. Обычная команда (`secret run X -- psql`) — код 0.
+**Independent Test**: after `secret get A` and `secret run B -- true`, the command `secret log`
+shows two lines with the time, the command, the name and the source; the log has no values.
+
+**Acceptance Scenarios**:
+
+1. **When** `get`, `run`, `copy`, `export` read a secret, **Then** a line goes into the log:
+   time, command, names, `agent` or `human`, parent process.
+2. **Given** `SECRET_LOG=off`, **Then** the log is not written.
+3. **When** `secret log -n 5 NAME`, **Then** the last 5 lines about NAME.
+
+### User Story 4 - The agent cannot read values around the rules (Priority: P2)
+
+A Claude Code hook stops commands that print values: `secret get`,
+`security find-generic-password -w`/`-g`, `security dump-keychain -d`, printing `.env` with
+`cat`/`less`/`head`/`tail`/`bat`, printing the environment inside `secret run` (`env`, `printenv`, `set`).
+
+**Independent Test**: the hook gets JSON with such a command as input — exit code 2 and the reason in
+stderr. A normal command (`secret run X -- psql`) — code 0.
 
 ### Edge Cases
 
-- Значение секрета встречается внутри другого значения: маскируется более длинное первым.
-- Команда в `--mask` печатает без перевода строки (прогресс): вывод появляется построчно.
-- Журнал недоступен на запись: команда работает, в stderr предупреждение.
-- Хук получает JSON без поля `command`: пропускает.
+- A secret value occurs inside another value: the longer one is masked first.
+- A command under `--mask` prints without a newline (progress): the output appears line by line.
+- The log cannot be written: the command works, a warning goes to stderr.
+- The hook gets JSON without the `command` field: it lets it pass.
 
 ## Requirements *(mandatory)*
 
-- **FR-001**: `secret gen [-c COMMENT] [-l LEN] [-s alnum|symbols|hex] [-f] NAME`. LEN от 8 до 256, по умолчанию 32.
-- **FR-002**: Значение `gen` берётся из `/dev/urandom` и не печатается.
-- **FR-003**: `secret run --mask` заменяет значения секретов на `***` в stdout и stderr команды и сохраняет её код выхода.
-- **FR-004**: `SECRET_RUN_MASK=1` включает `--mask` по умолчанию.
-- **FR-005**: Журнал `${SECRET_LOG:-~/.local/state/secret/access.log}`, права 600, без значений.
-- **FR-006**: `secret log [-n N] [NAME]` печатает журнал.
-- **FR-007**: Хук `hooks/claude-pretooluse.sh` для события PreToolUse инструмента Bash; `install.sh --claude-hook` добавляет его в `~/.claude/settings.json`.
+- **FR-001**: `secret gen [-c COMMENT] [-l LEN] [-s alnum|symbols|hex] [-f] NAME`. LEN from 8 to 256, default 32.
+- **FR-002**: The `gen` value comes from `/dev/urandom` and is not printed.
+- **FR-003**: `secret run --mask` replaces secret values with `***` in the stdout and stderr of the command and keeps its exit code.
+- **FR-004**: `SECRET_RUN_MASK=1` turns on `--mask` by default.
+- **FR-005**: The log is `${SECRET_LOG:-~/.local/state/secret/access.log}`, mode 600, no values.
+- **FR-006**: `secret log [-n N] [NAME]` prints the log.
+- **FR-007**: The hook `hooks/claude-pretooluse.sh` for the PreToolUse event of the Bash tool; `install.sh --claude-hook` adds it to `~/.claude/settings.json`.
 
 ## Success Criteria *(mandatory)*
 
-- **SC-001**: В выводе `gen`, `run --mask`, `log` и в файле журнала нет ни одного значения секрета (проверяется тестом).
-- **SC-002**: Хук блокирует все 8 шаблонов из US4 и пропускает 5 обычных команд из теста.
-- **SC-003**: `tests/run.sh` проходит целиком.
+- **SC-001**: The output of `gen`, `run --mask`, `log` and the log file have no secret value at all (checked by a test).
+- **SC-002**: The hook blocks all 8 patterns from US4 and lets the 5 normal commands from the test pass.
+- **SC-003**: `tests/run.sh` passes in full.
 
 ## Assumptions
 
-- Маскировка ловит значение как есть. Закодированное значение (base64 в `Authorization: Basic`,
-  URL-кодирование) не ловится: это записано в README.
-- Хук — защита от ошибки агента, а не от злого умысла: команду можно составить так, что шаблон
-  её не узнает.
-- `CLAUDECODE=1` в окружении означает запуск из Claude Code.
+- Masking catches the value as is. An encoded value (base64 in `Authorization: Basic`,
+  URL encoding) is not caught: this is written in the README.
+- The hook protects against an agent mistake, not against malice: a command can be written so
+  that the pattern does not recognize it.
+- `CLAUDECODE=1` in the environment means a run from Claude Code.

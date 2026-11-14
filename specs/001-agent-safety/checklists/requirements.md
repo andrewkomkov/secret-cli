@@ -1,4 +1,4 @@
-# Specification Quality Checklist: Защита от утечек при работе агента
+# Specification Quality Checklist: Leak protection during agent work
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-10-02
@@ -31,4 +31,4 @@
 
 ## Notes
 
-- Спека называет команды `secret`: это интерфейс, который просил владелец.
+- The spec names `secret` commands: this is the interface that the owner asked for.

@@ -1,5 +1,5 @@
-// secret-auth: единственный читатель защищённых записей secret, Touch ID и статус keychain.
-// Запись, которую создал helper, без окна читает только он (ACL создателя, research R1).
+// secret-auth: the only reader of protected secret items, Touch ID and keychain status.
+// Only the helper reads an item that it created without a window (creator ACL, research R1).
 import CryptoKit
 import Foundation
 import LocalAuthentication

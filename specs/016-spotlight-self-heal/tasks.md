@@ -1,11 +1,11 @@
-# Tasks: SecretBar сам восстанавливает индекс Spotlight
+# Tasks: SecretBar restores the Spotlight index itself
 
 **Input**: `specs/016-spotlight-self-heal/spec.md`
 
 - [x] T001 [US1] `app/SecretBar/SecretBarApp.swift`: `SpotlightIndex.count()`, `--spotlight-check`
-  через неё, `--spotlight-clear` для проверки
-- [x] T002 [US1] `app/SecretBar/Model.swift`: `Store.healSpotlight()` при запуске и каждые 10 минут
-- [x] T003 `app/SecretBar/Model.swift`: `Store.shared` в демо-режиме при запуске с флагами проверки
-- [x] T004 Сборка, установка, живая проверка SC-001 агентом 2026-10-08: SecretBar запущен в
-  18:02:47, индекс очищен в 18:03:03 (0 записей), в 18:13:07 снова 65 записей без перезапуска.
-  `tests/run.sh`: 301 проверка проходит
+  through it, `--spotlight-clear` for the check
+- [x] T002 [US1] `app/SecretBar/Model.swift`: `Store.healSpotlight()` at launch and every 10 minutes
+- [x] T003 `app/SecretBar/Model.swift`: `Store.shared` in demo mode at a launch with check flags
+- [x] T004 Build, install, live check of SC-001 by the agent 2026-10-08: SecretBar started at
+  18:02:47, the index cleared at 18:03:03 (0 entries), at 18:13:07 again 65 entries without a restart.
+  `tests/run.sh`: 301 checks pass

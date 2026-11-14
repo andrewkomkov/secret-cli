@@ -1,4 +1,4 @@
-# Specification Quality Checklist: Скользящий grace
+# Specification Quality Checklist: Sliding grace
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-10-07
@@ -31,5 +31,5 @@
 
 ## Notes
 
-- Спецификация называет Touch ID, блокировку экрана и сон Mac: для этой фичи это предмет
-  требований, а не способ реализации.
+- The specification names Touch ID, screen lock and Mac sleep: for this feature they are the
+  subject of the requirements, not a means of implementation.
