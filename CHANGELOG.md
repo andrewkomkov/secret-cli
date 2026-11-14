@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.8.0](https://github.com/andrewkomkov/secret-cli/compare/v1.7.1...v1.8.0) (2026-11-14)
+
+
+### Features
+
+* **cookie:** translate the Safari extension into Russian ([55bf33e](https://github.com/andrewkomkov/secret-cli/commit/55bf33e42be7091f861b7f0708bb7d6c4b4ffa23))
+* **ls:** find secrets by meaning with the on-device model ([546694f](https://github.com/andrewkomkov/secret-cli/commit/546694f03469606fe266d3b3d321942281b4bfc6))
+* **ls:** find secrets by meaning with the on-device model ([b28025b](https://github.com/andrewkomkov/secret-cli/commit/b28025b9eed36c8ae1eeda67742058848e480b85))
+* **secretbar:** search in SecretBar from Siri and Spotlight ([2ef3b17](https://github.com/andrewkomkov/secret-cli/commit/2ef3b174c446e0ca5bbc0739681447a276230157))
+* **secretbar:** search in SecretBar from Siri and Spotlight ([1692da0](https://github.com/andrewkomkov/secret-cli/commit/1692da0bdd51a2fa8b6666209e82660971ce8d40))
+* **store:** post-quantum Secure Enclave store (ML-KEM-768 + P-256) ([d8575a4](https://github.com/andrewkomkov/secret-cli/commit/d8575a49c466c8599379c16548fa604201e842c9))
+* **store:** seal values with ML-KEM-768 and P-256 from the Secure Enclave ([c70504e](https://github.com/andrewkomkov/secret-cli/commit/c70504e1f8d8fe3cae489bc232560a43d8ac83ac))
+
+
+### Bug Fixes
+
+* **secretbar:** build the search intent only with the Xcode 26 SDK ([ae66f1b](https://github.com/andrewkomkov/secret-cli/commit/ae66f1bb589c1ec345d1084c003a2237780413e1))
+* **store:** open each value again before touchid pq writes the store ([0527203](https://github.com/andrewkomkov/secret-cli/commit/052720346205200409dd6bfe0895969963965c70))
+
 ## [1.7.1](https://github.com/andrewkomkov/secret-cli/compare/v1.7.0...v1.7.1) (2026-11-06)
 
 
